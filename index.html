@@ -4,119 +4,146 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台灣旅遊行程規劃</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
-      --primary: #FF6B6B;
-      --primary-light: #FF8E8E;
-      --bg: #FFF9F0;
-      --card-bg: #FFFFFF;
-      --text: #2D3436;
-      --text-light: #636E72;
+      --primary: #FF6B6B; --primary-light: #FF8E8E;
+      --bg: #FFF9F0; --card-bg: #FFFFFF; --text: #2D3436; --text-light: #636E72;
       --border: #EBEBEB;
       --morning: #FFF3CD; --afternoon: #D4EDDA; --evening: #D1ECF1;
       --morning-border: #FFCA28; --afternoon-border: #66BB6A; --evening-border: #26C6DA;
-      --shadow: 0 4px 20px rgba(0,0,0,0.08);
-      --radius: 16px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08); --radius: 16px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI','PingFang TC','Noto Sans TC',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    header { background: linear-gradient(135deg,#FF6B6B 0%,#FF8E8E 100%); color: white; padding: 20px 24px; text-align: center; }
+    header { background: linear-gradient(135deg,#FF6B6B,#FF8E8E); color: white; padding: 20px 24px; text-align: center; }
     header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; }
     header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
 
-    .screen { display: none; max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+    .screen { display: none; max-width: 720px; margin: 0 auto; padding: 24px 16px; }
     .screen.active { display: block; }
 
-    /* Form */
+    /* ── Form ── */
     .form-card { background: var(--card-bg); border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--shadow); }
     .form-card h2 { font-size: 1.15rem; color: var(--primary); margin-bottom: 20px; }
     .field { margin-bottom: 18px; }
     .field label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    select, input[type="text"] {
+    .field-hint { font-size: 0.75rem; color: var(--text-light); margin-top: 4px; font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    select, input[type="text"], textarea {
       width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px;
       font-size: 0.95rem; color: var(--text); background: #FAFAFA; transition: border-color 0.2s;
-      appearance: none; -webkit-appearance: none;
+      appearance: none; -webkit-appearance: none; font-family: inherit;
     }
     select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23636E72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
-    select:focus, input:focus { outline: none; border-color: var(--primary); background: #FFF; }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary); background: #FFF; }
+    textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .radio-group { display: flex; gap: 10px; }
     .radio-group label { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: var(--text); transition: all 0.2s; text-transform: none; letter-spacing: 0; }
     .radio-group input[type="radio"] { display: none; }
     .radio-group label:has(input:checked) { border-color: var(--primary); background: #FFF0F0; color: var(--primary); }
 
-    /* Buttons */
+    .section-divider { margin: 20px 0 16px; padding-bottom: 10px; border-bottom: 2px solid var(--border); font-size: 0.9rem; font-weight: 700; color: var(--text-light); }
+    .daily-dir-list { display: flex; flex-direction: column; gap: 8px; }
+    .daily-dir-item { display: flex; align-items: center; gap: 10px; }
+    .daily-dir-item .day-label { font-size: 0.82rem; font-weight: 600; color: var(--primary); white-space: nowrap; min-width: 48px; }
+
+    /* ── Buttons ── */
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 8px; }
-    .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,107,107,0.35); }
-    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,107,107,.35); }
     .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); width: 100%; margin-top: 12px; }
     .btn-secondary:hover { background: #FFF0F0; }
     .btn-sm { padding: 6px 14px; font-size: 0.78rem; border-radius: 8px; background: #F0F0F0; color: var(--text-light); border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .btn-sm:hover { background: var(--primary); color: white; }
-    .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sm:disabled { opacity: .4; cursor: not-allowed; }
     .btn-action-row { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 
-    /* Loading */
-    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.85); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+    /* ── Loading ── */
+    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.85); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
     .loading-overlay.active { display: flex; }
-    .spinner { width: 48px; height: 48px; border: 4px solid #EBEBEB; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner { width: 48px; height: 48px; border: 4px solid #EEE; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-text { font-size: 1rem; color: var(--text-light); font-weight: 500; }
 
-    /* Itinerary */
-    .screen-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    /* ── Screen 2: Map ── */
+    .map-section { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+    .map-toggle-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; user-select: none; }
+    .map-toggle-bar span { font-size: 0.95rem; font-weight: 700; }
+    .map-toggle-bar .toggle-icon { font-size: 0.8rem; color: var(--text-light); transition: transform 0.2s; }
+    .map-toggle-bar .toggle-icon.open { transform: rotate(180deg); }
+    #map { height: 350px; }
+    .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 18px 14px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-light); }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+    /* ── Itinerary ── */
+    .screen-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
     .screen-header h2 { font-size: 1.3rem; font-weight: 700; }
     .trip-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
     .day-card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
     .day-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
     .time-slot { margin-bottom: 14px; }
-    .time-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .time-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .time-label.morning { color: #B7860B; } .time-label.afternoon { color: #2D7D32; } .time-label.evening { color: #00838F; }
-    .spot-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; }
+
+    .spot-item { padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; }
     .morning .spot-item { background: var(--morning); border-left: 3px solid var(--morning-border); }
     .afternoon .spot-item { background: var(--afternoon); border-left: 3px solid var(--afternoon-border); }
     .evening .spot-item { background: var(--evening); border-left: 3px solid var(--evening-border); }
+
+    .spot-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .spot-info { flex: 1; min-width: 0; }
     .spot-type { font-size: 0.7rem; font-weight: 600; color: white; background: var(--text-light); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 3px; }
     .spot-type.景點 { background: #8E44AD; } .spot-type.美食 { background: #E67E22; }
     .spot-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 2px; }
-    .spot-note { font-size: 0.8rem; color: var(--text-light); }
+    .spot-note { font-size: 0.8rem; color: var(--text-light); margin-bottom: 4px; }
+    .spot-address { font-size: 0.76rem; color: var(--text-light); margin-bottom: 6px; }
+    .spot-footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .map-link { font-size: 0.76rem; color: var(--primary); text-decoration: none; background: rgba(255,107,107,.1); padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,107,107,.3); transition: all .2s; }
+    .map-link:hover { background: var(--primary); color: white; }
+    .sub-toggle { font-size: 0.76rem; color: var(--text-light); background: rgba(0,0,0,.06); padding: 3px 10px; border-radius: 6px; border: none; cursor: pointer; transition: all .2s; }
+    .sub-toggle:hover { background: rgba(0,0,0,.12); }
+    .sub-list { margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,.6); border-radius: 8px; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .sub-list.hidden { display: none; }
+    .sub-list li { font-size: 0.82rem; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .sub-list li::before { content: "🍴"; font-size: 0.75rem; }
 
-    /* Image */
+    /* ── Image ── */
     .image-card { background: var(--card-bg); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); text-align: center; }
     .image-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
-    .image-card p { font-size: 0.85rem; color: var(--text-light); margin-bottom: 20px; }
+    .image-card p { font-size: .85rem; color: var(--text-light); margin-bottom: 20px; }
     .result-image { width: 100%; border-radius: 12px; margin-bottom: 20px; display: none; }
     .result-image.loaded { display: block; }
-    .image-placeholder { width: 100%; padding-top: 56.25%; background: linear-gradient(135deg,#FFF3F3 0%,#FFE0E0 100%); border-radius: 12px; position: relative; margin-bottom: 20px; }
+    .image-placeholder { width: 100%; padding-top: 56.25%; background: linear-gradient(135deg,#FFF3F3,#FFE0E0); border-radius: 12px; position: relative; margin-bottom: 20px; }
     .image-placeholder.hidden { display: none; }
     .image-placeholder-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-light); }
 
-    /* Toast */
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #2D3436; color: white; padding: 12px 24px; border-radius: 30px; font-size: 0.88rem; font-weight: 500; z-index: 200; transition: transform 0.3s ease; white-space: nowrap; }
-    .toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* ── Suggestion Picker Modal ── */
-    .picker-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 150; align-items: flex-end; justify-content: center; }
+    /* ── Picker ── */
+    .picker-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150; align-items: flex-end; justify-content: center; }
     .picker-overlay.active { display: flex; }
-    .picker-sheet { background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 680px; animation: slideUp 0.3s ease; }
+    .picker-sheet { background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 720px; animation: slideUp .3s ease; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    .picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .picker-title { font-size: 1rem; font-weight: 700; color: var(--text); }
-    .picker-subtitle { font-size: 0.82rem; color: var(--text-light); margin-bottom: 16px; }
-    .picker-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-light); line-height: 1; }
+    .picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .picker-title { font-size: 1rem; font-weight: 700; }
+    .picker-subtitle { font-size: .82rem; color: var(--text-light); margin-bottom: 16px; }
+    .picker-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-light); }
     .suggestion-list { display: flex; flex-direction: column; gap: 10px; }
-    .suggestion-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.2s; background: #FAFAFA; }
+    .suggestion-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; transition: all .2s; background: #FAFAFA; }
     .suggestion-card:hover { border-color: var(--primary); background: #FFF0F0; transform: translateY(-1px); }
     .suggestion-card .s-icon { font-size: 1.4rem; flex-shrink: 0; }
     .suggestion-card .s-info { flex: 1; }
-    .suggestion-card .s-name { font-size: 0.95rem; font-weight: 600; }
-    .suggestion-card .s-note { font-size: 0.8rem; color: var(--text-light); margin-top: 2px; }
-    .suggestion-card .s-type { font-size: 0.7rem; font-weight: 600; color: white; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 3px; }
+    .suggestion-card .s-name { font-size: .95rem; font-weight: 600; }
+    .suggestion-card .s-note { font-size: .8rem; color: var(--text-light); margin-top: 2px; }
+    .suggestion-card .s-type { font-size: .7rem; font-weight: 600; color: white; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 3px; }
     .suggestion-card .s-type.景點 { background: #8E44AD; } .suggestion-card .s-type.美食 { background: #E67E22; }
     .picker-loading { text-align: center; padding: 32px; color: var(--text-light); }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #2D3436; color: white; padding: 12px 24px; border-radius: 30px; font-size: .88rem; font-weight: 500; z-index: 200; transition: transform .3s ease; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
 
     @media (max-width: 480px) {
       header h1 { font-size: 1.3rem; }
@@ -136,10 +163,9 @@
   <div class="spinner"></div>
   <div class="loading-text" id="loadingText">AI 正在處理中...</div>
 </div>
-
 <div class="toast" id="toast"></div>
 
-<!-- ── Suggestion Picker ── -->
+<!-- Picker -->
 <div class="picker-overlay" id="pickerOverlay" onclick="handleOverlayClick(event)">
   <div class="picker-sheet">
     <div class="picker-header">
@@ -153,14 +179,14 @@
   </div>
 </div>
 
-<!-- ══ Screen 1: 條件輸入 ══ -->
+<!-- ══ Screen 1 ══ -->
 <div class="screen active" id="screen1">
   <div class="form-card">
     <h2>✈️ 填入旅遊條件</h2>
 
     <div class="field">
       <label>目的地</label>
-      <select id="destination" onchange="updateRegions()">
+      <select id="destination" onchange="updateRegions(); updateDailyDirections()">
         <option value="Taipei">台北</option>
         <option value="Taichung">台中</option>
         <option value="Tainan" selected>台南</option>
@@ -180,36 +206,50 @@
       <div class="field">
         <label>大人人數</label>
         <select id="adults">
-          <option value="1">1 位</option>
-          <option value="2" selected>2 位</option>
-          <option value="3">3 位</option>
-          <option value="4">4 位</option>
-          <option value="5">5 位</option>
-          <option value="6">6 位</option>
+          <option value="1">1 位</option><option value="2" selected>2 位</option>
+          <option value="3">3 位</option><option value="4">4 位</option>
+          <option value="5">5 位</option><option value="6">6 位</option>
         </select>
       </div>
       <div class="field">
         <label>小孩人數</label>
         <select id="kids">
-          <option value="0" selected>0 位</option>
-          <option value="1">1 位</option>
-          <option value="2">2 位</option>
-          <option value="3">3 位</option>
-          <option value="4">4 位</option>
-          <option value="5">5 位</option>
+          <option value="0" selected>0 位</option><option value="1">1 位</option>
+          <option value="2">2 位</option><option value="3">3 位</option>
+          <option value="4">4 位</option><option value="5">5 位</option>
         </select>
       </div>
     </div>
 
     <div class="field">
       <label>旅遊天數</label>
-      <select id="days">
-        <option value="1">1 天</option>
-        <option value="2" selected>2 天</option>
-        <option value="3">3 天</option>
-        <option value="4">4 天</option>
+      <select id="days" onchange="updateDailyDirections()">
+        <option value="1">1 天</option><option value="2" selected>2 天</option>
+        <option value="3">3 天</option><option value="4">4 天</option>
         <option value="5">5 天</option>
       </select>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>出發時間</label>
+        <select id="departTime">
+          <option value="06:00">06:00</option><option value="07:00">07:00</option>
+          <option value="08:00">08:00</option><option value="09:00" selected>09:00</option>
+          <option value="10:00">10:00</option>
+        </select>
+        <span class="field-hint">第一天幾點離開住宿出發</span>
+      </div>
+      <div class="field">
+        <label>回程時間</label>
+        <select id="returnTime">
+          <option value="12:00">12:00</option><option value="13:00">13:00</option>
+          <option value="14:00">14:00</option><option value="15:00" selected>15:00</option>
+          <option value="16:00">16:00</option><option value="17:00">17:00</option>
+          <option value="18:00">18:00</option>
+        </select>
+        <span class="field-hint">最後一天幾點要到車站或機場</span>
+      </div>
     </div>
 
     <div class="field">
@@ -225,24 +265,50 @@
       <input type="text" id="accommodation" placeholder="例：台南市區、安平區..." value="台南市區" />
     </div>
 
+    <div class="section-divider">✏️ 特別需求（選填）</div>
+
+    <div class="field">
+      <label>整體特別需求</label>
+      <textarea id="specialRequest" placeholder="例：想吃公正包子、不想爬山、希望輕鬆一點"></textarea>
+    </div>
+
+    <div class="field">
+      <label>每天方向指定</label>
+      <div class="daily-dir-list" id="dailyDirList"></div>
+    </div>
+
     <button class="btn btn-primary" onclick="generateItinerary()">🚀 生成行程</button>
   </div>
 </div>
 
-<!-- ══ Screen 2: 行程編輯 ══ -->
+<!-- ══ Screen 2 ══ -->
 <div class="screen" id="screen2">
   <div class="screen-header">
     <h2 id="itineraryTitle">台南 2 天之旅</h2>
     <span class="trip-badge" id="itineraryBadge">2 天</span>
   </div>
+
+  <!-- Map -->
+  <div class="map-section">
+    <div class="map-toggle-bar" onclick="toggleMap()">
+      <span>🗺️ 行程地圖</span>
+      <span class="toggle-icon open" id="mapToggleIcon">▲</span>
+    </div>
+    <div id="mapContainer">
+      <div id="map"></div>
+      <div class="map-legend" id="mapLegend"></div>
+    </div>
+  </div>
+
   <div id="itineraryContainer"></div>
+
   <div class="btn-action-row">
     <button class="btn btn-primary" onclick="generateImage()">🎨 確認，生成旅遊圖片</button>
     <button class="btn btn-secondary" onclick="showScreen(1)">← 重新填寫條件</button>
   </div>
 </div>
 
-<!-- ══ Screen 3: 圖片結果 ══ -->
+<!-- ══ Screen 3 ══ -->
 <div class="screen" id="screen3">
   <div class="image-card">
     <h2 id="imageTitle">你的旅遊圖片</h2>
@@ -265,16 +331,9 @@
 
 <script>
   const N8N_BASE = 'https://n8n-771125.zeabur.app/webhook'
-  const API = {
-    generate: N8N_BASE + '/generate-itinerary',
-    replace:  N8N_BASE + '/replace-spot',
-    image:    N8N_BASE + '/generate-image'
-  }
+  const API = { generate: N8N_BASE + '/generate-itinerary', replace: N8N_BASE + '/replace-spot', image: N8N_BASE + '/generate-image' }
 
-  const CITY_NAMES = {
-    Taipei: '台北', Taichung: '台中', Tainan: '台南',
-    Kaohsiung: '高雄', Hualien: '花蓮', YiLan: '宜蘭', Pingtung: '屏東'
-  }
+  const CITY_NAMES = { Taipei:'台北', Taichung:'台中', Tainan:'台南', Kaohsiung:'高雄', Hualien:'花蓮', YiLan:'宜蘭', Pingtung:'屏東' }
 
   const CITY_REGIONS = {
     Taipei:    ['不限區域','中正區','大安區','信義區','中山區','松山區','內湖區','士林區','北投區','萬華區','文山區'],
@@ -286,70 +345,72 @@
     Pingtung:  ['不限區域','屏東市','潮州鎮','東港鎮','恆春鎮','萬丹鄉','長治鄉']
   }
 
-  let currentItinerary = null
-  let currentParams = null
-  let imageUrl = null
-  // Picker state
-  let pickerContext = null  // { day, slot, spotName, itemEl, btnEl }
+  const CITY_CENTERS = {
+    Taipei:    [25.0330, 121.5654], Taichung:  [24.1477, 120.6736],
+    Tainan:    [22.9999, 120.2269], Kaohsiung: [22.6273, 120.3014],
+    Hualien:   [23.9769, 121.6044], YiLan:     [24.7021, 121.7378],
+    Pingtung:  [22.6724, 120.4882]
+  }
+
+  const DAY_COLORS = ['#3388ff','#ff7700','#33aa33','#9933ff','#cc0000']
+  const DAY_COLOR_NAMES = ['藍色（第1天）','橘色（第2天）','綠色（第3天）','紫色（第4天）','紅色（第5天）']
+
+  let currentItinerary = null, currentParams = null, imageUrl = null, pickerContext = null
+  let leafletMap = null, mapOpen = true
 
   // ── Init ──
-  updateRegions()
+  updateRegions(); updateDailyDirections()
 
   function updateRegions() {
     const dest = document.getElementById('destination').value
     const sel = document.getElementById('region')
     sel.innerHTML = ''
     ;(CITY_REGIONS[dest] || ['不限區域']).forEach(r => {
-      const opt = document.createElement('option')
-      opt.value = r
-      opt.textContent = r
-      sel.appendChild(opt)
+      const opt = document.createElement('option'); opt.value = r; opt.textContent = r; sel.appendChild(opt)
     })
     document.getElementById('accommodation').value = CITY_NAMES[dest] + '市區'
   }
 
+  function updateDailyDirections() {
+    const days = parseInt(document.getElementById('days').value)
+    const list = document.getElementById('dailyDirList')
+    list.innerHTML = ''
+    for (let i = 1; i <= days; i++) {
+      const row = document.createElement('div'); row.className = 'daily-dir-item'
+      row.innerHTML = `<span class="day-label">第 ${i} 天</span><input type="text" id="dailyDir${i}" placeholder="例：市區美食為主、輕鬆步調" />`
+      list.appendChild(row)
+    }
+  }
+
+  // ── Utils ──
   function showScreen(n) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
     document.getElementById('screen' + n).classList.add('active')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (n === 2 && currentItinerary) setTimeout(() => { if (leafletMap) leafletMap.invalidateSize() }, 200)
   }
 
-  function showLoading(text = 'AI 正在處理中...') {
-    document.getElementById('loadingText').textContent = text
-    document.getElementById('loadingOverlay').classList.add('active')
-  }
+  function showLoading(t) { document.getElementById('loadingText').textContent = t; document.getElementById('loadingOverlay').classList.add('active') }
+  function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active') }
+  function showToast(msg, dur = 2500) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur) }
+  function getPreference() { return document.querySelector('input[name="preference"]:checked').value }
 
-  function hideLoading() {
-    document.getElementById('loadingOverlay').classList.remove('active')
-  }
-
-  function showToast(msg, duration = 2500) {
-    const t = document.getElementById('toast')
-    t.textContent = msg
-    t.classList.add('show')
-    setTimeout(() => t.classList.remove('show'), duration)
-  }
-
-  function getPreference() {
-    return document.querySelector('input[name="preference"]:checked').value
-  }
+  function isInTaiwan(lat, lng) { return lat >= 21 && lat <= 26 && lng >= 119 && lng <= 122 }
 
   function getAllSpotNames(excludeDay, excludeSlot, excludeName) {
     const names = []
     if (!currentItinerary) return names
     currentItinerary.itinerary.forEach(day => {
-      ;['morning', 'afternoon', 'evening'].forEach(slot => {
+      ;['morning','afternoon','evening'].forEach(slot => {
         ;(day[slot] || []).forEach(spot => {
-          if (!(day.day === excludeDay && slot === excludeSlot && spot.name === excludeName)) {
-            names.push(spot.name)
-          }
+          if (!(day.day === excludeDay && slot === excludeSlot && spot.name === excludeName)) names.push(spot.name)
         })
       })
     })
     return names
   }
 
-  // ── Screen 1: Generate ──
+  // ── Screen 1 ──
   async function generateItinerary() {
     const destination = document.getElementById('destination').value
     const region = document.getElementById('region').value
@@ -358,34 +419,82 @@
     const kids = parseInt(document.getElementById('kids').value)
     const preference = getPreference()
     const accommodation = document.getElementById('accommodation').value.trim() || CITY_NAMES[destination] + '市區'
+    const depart_time = document.getElementById('departTime').value
+    const return_time = document.getElementById('returnTime').value
+    const special_request = document.getElementById('specialRequest').value.trim()
+    const daily_direction = []
+    for (let i = 1; i <= days; i++) {
+      daily_direction.push((document.getElementById('dailyDir' + i)?.value || '').trim())
+    }
 
-    currentParams = { destination, region, days, adults, kids, preference, accommodation }
+    currentParams = { destination, region, days, adults, kids, preference, accommodation, depart_time, return_time }
     showLoading('AI 正在規劃你的行程...')
 
     try {
       const res = await fetch(API.generate, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destination: CITY_NAMES[destination],
           region: region === '不限區域' ? '' : region,
-          days, adults, kids, preference, accommodation
+          days, adults, kids, preference, accommodation,
+          depart_time, return_time, special_request, daily_direction
         })
       })
       if (!res.ok) throw new Error('Webhook 回應錯誤：' + res.status)
       const data = await res.json()
       currentItinerary = data
       renderItinerary(data)
+      initMap(data.itinerary, destination)
       showScreen(2)
     } catch (err) {
-      console.error(err)
-      showToast('❌ 生成失敗，請確認 n8n Webhook 是否正確設定')
-    } finally {
-      hideLoading()
-    }
+      console.error(err); showToast('❌ 生成失敗，請確認 n8n Webhook 是否正確設定')
+    } finally { hideLoading() }
   }
 
-  // ── Screen 2: Render ──
+  // ── Map ──
+  function toggleMap() {
+    mapOpen = !mapOpen
+    document.getElementById('mapContainer').style.display = mapOpen ? '' : 'none'
+    document.getElementById('mapToggleIcon').classList.toggle('open', mapOpen)
+    if (mapOpen && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 100)
+  }
+
+  function initMap(itinerary, destination) {
+    const center = CITY_CENTERS[destination] || [23.9769, 121.6044]
+    if (leafletMap) { leafletMap.remove(); leafletMap = null }
+    leafletMap = L.map('map').setView(center, 13)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 18
+    }).addTo(leafletMap)
+
+    const usedColors = new Set()
+    itinerary.forEach((day, dayIdx) => {
+      const color = DAY_COLORS[dayIdx] || '#888'
+      let hasMarker = false
+      ;['morning','afternoon','evening'].forEach(slot => {
+        ;(day[slot] || []).forEach(spot => {
+          if (spot.lat && spot.lng && isInTaiwan(spot.lat, spot.lng)) {
+            hasMarker = true
+            L.circleMarker([spot.lat, spot.lng], { color, fillColor: color, fillOpacity: 0.85, radius: 9, weight: 2 })
+              .addTo(leafletMap)
+              .bindPopup(`<b>${spot.name}</b><br><small>${spot.note || ''}</small>`)
+          }
+        })
+      })
+      if (hasMarker) usedColors.add(dayIdx)
+    })
+
+    // Legend
+    const legend = document.getElementById('mapLegend')
+    legend.innerHTML = ''
+    usedColors.forEach(idx => {
+      const item = document.createElement('div'); item.className = 'legend-item'
+      item.innerHTML = `<span class="legend-dot" style="background:${DAY_COLORS[idx]}"></span><span>第 ${idx+1} 天</span>`
+      legend.appendChild(item)
+    })
+  }
+
+  // ── Screen 2 Render ──
   function renderItinerary(data) {
     const cityName = data.title || CITY_NAMES[currentParams?.destination] || '台灣'
     const daysCount = data.days || data.itinerary?.length || 1
@@ -403,22 +512,14 @@
   }
 
   function buildDayCard(dayData) {
-    const card = document.createElement('div')
-    card.className = 'day-card'
-    card.dataset.day = dayData.day
-    const title = document.createElement('div')
-    title.className = 'day-title'
-    title.textContent = `第 ${dayData.day} 天`
+    const card = document.createElement('div'); card.className = 'day-card'; card.dataset.day = dayData.day
+    const title = document.createElement('div'); title.className = 'day-title'; title.textContent = `第 ${dayData.day} 天`
     card.appendChild(title)
-    ;['morning', 'afternoon', 'evening'].forEach(slot => {
-      const spots = dayData[slot] || []
-      const meta = SLOT_META[slot]
-      const slotDiv = document.createElement('div')
-      slotDiv.className = 'time-slot'
-      const labelDiv = document.createElement('div')
-      labelDiv.className = `time-label ${meta.class}`
-      labelDiv.textContent = `${meta.emoji} ${meta.label}`
-      slotDiv.appendChild(labelDiv)
+    ;['morning','afternoon','evening'].forEach(slot => {
+      const spots = dayData[slot] || []; const meta = SLOT_META[slot]
+      const slotDiv = document.createElement('div'); slotDiv.className = 'time-slot'
+      const labelDiv = document.createElement('div'); labelDiv.className = `time-label ${meta.class}`
+      labelDiv.textContent = `${meta.emoji} ${meta.label}`; slotDiv.appendChild(labelDiv)
       spots.forEach(spot => slotDiv.appendChild(buildSpotItem(spot, dayData.day, slot)))
       card.appendChild(slotDiv)
     })
@@ -426,59 +527,60 @@
   }
 
   function buildSpotItem(spot, day, slot) {
-    const item = document.createElement('div')
-    item.className = `spot-item ${SLOT_META[slot].class}`
-    item.dataset.name = spot.name
+    const item = document.createElement('div'); item.className = `spot-item ${SLOT_META[slot].class}`; item.dataset.name = spot.name
 
-    const info = document.createElement('div')
-    info.className = 'spot-info'
-    const typeTag = document.createElement('span')
-    typeTag.className = `spot-type ${spot.type || ''}`
-    typeTag.textContent = spot.type || '景點'
+    // Top row: info + replace btn
+    const top = document.createElement('div'); top.className = 'spot-top'
+    const info = document.createElement('div'); info.className = 'spot-info'
+
+    const typeTag = document.createElement('span'); typeTag.className = `spot-type ${spot.type || ''}`; typeTag.textContent = spot.type || '景點'
     info.appendChild(typeTag)
-    const name = document.createElement('div')
-    name.className = 'spot-name'
-    name.textContent = spot.name
-    info.appendChild(name)
-    if (spot.note) {
-      const note = document.createElement('div')
-      note.className = 'spot-note'
-      note.textContent = spot.note
-      info.appendChild(note)
+    const name = document.createElement('div'); name.className = 'spot-name'; name.textContent = spot.name; info.appendChild(name)
+    if (spot.note) { const note = document.createElement('div'); note.className = 'spot-note'; note.textContent = spot.note; info.appendChild(note) }
+    if (spot.address) { const addr = document.createElement('div'); addr.className = 'spot-address'; addr.textContent = '📍 ' + spot.address; info.appendChild(addr) }
+
+    // Footer: map link + sub-items toggle
+    const footer = document.createElement('div'); footer.className = 'spot-footer'
+    if (spot.maps_url) {
+      const mapLink = document.createElement('a'); mapLink.className = 'map-link'; mapLink.href = spot.maps_url
+      mapLink.target = '_blank'; mapLink.rel = 'noopener'; mapLink.textContent = '🗺️ 地圖'; footer.appendChild(mapLink)
+    }
+    if (spot.sub_items && spot.sub_items.length > 0) {
+      const toggle = document.createElement('button'); toggle.className = 'sub-toggle'; toggle.textContent = '展開必吃 ▼'
+      const list = document.createElement('ul'); list.className = 'sub-list hidden'
+      spot.sub_items.forEach(si => { const li = document.createElement('li'); li.textContent = si; list.appendChild(li) })
+      toggle.onclick = () => {
+        const open = list.classList.toggle('hidden') === false
+        toggle.textContent = open ? '收起必吃 ▲' : '展開必吃 ▼'
+      }
+      footer.appendChild(toggle)
+      info.appendChild(footer)
+      info.appendChild(list)
+    } else {
+      info.appendChild(footer)
     }
 
-    const btn = document.createElement('button')
-    btn.className = 'btn-sm'
-    btn.textContent = '換一個'
+    const btn = document.createElement('button'); btn.className = 'btn-sm'; btn.textContent = '換一個'
     btn.onclick = () => openPicker(day, slot, spot.name, item, btn)
 
-    item.appendChild(info)
-    item.appendChild(btn)
+    top.appendChild(info); top.appendChild(btn); item.appendChild(top)
     return item
   }
 
-  // ── Suggestion Picker ──
+  // ── Picker ──
   async function openPicker(day, slot, spotName, itemEl, btnEl) {
     pickerContext = { day, slot, spotName, itemEl, btnEl }
-    btnEl.disabled = true
-    btnEl.textContent = '載入中...'
-
-    // Show picker with loading state
+    btnEl.disabled = true; btnEl.textContent = '載入中...'
     document.getElementById('suggestionList').innerHTML = '<div class="picker-loading">AI 正在推薦選項...</div>'
     document.getElementById('pickerOverlay').classList.add('active')
-
     const keepSpots = getAllSpotNames(day, slot, spotName)
-
     try {
       const res = await fetch(API.replace, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destination: CITY_NAMES[currentParams?.destination] || currentItinerary?.title || '台灣',
           region: currentParams?.region === '不限區域' ? '' : (currentParams?.region || ''),
-          day, slot,
-          replace_spot: spotName,
-          keep_spots: keepSpots,
+          day, slot, replace_spot: spotName, keep_spots: keepSpots,
           preference: currentParams?.preference || '一般旅遊'
         })
       })
@@ -486,35 +588,24 @@
       const data = await res.json()
       renderSuggestions(data.suggestions || [])
     } catch (err) {
-      console.error(err)
-      closePicker()
-      showToast('❌ 取得建議失敗，請稍後再試')
-    } finally {
-      btnEl.disabled = false
-      btnEl.textContent = '換一個'
-    }
+      console.error(err); closePicker(); showToast('❌ 取得建議失敗，請稍後再試')
+    } finally { btnEl.disabled = false; btnEl.textContent = '換一個' }
   }
 
   function renderSuggestions(suggestions) {
     const list = document.getElementById('suggestionList')
-    if (!suggestions.length) {
-      list.innerHTML = '<div class="picker-loading">沒有找到建議景點</div>'
-      return
-    }
+    if (!suggestions.length) { list.innerHTML = '<div class="picker-loading">沒有找到建議景點</div>'; return }
     list.innerHTML = ''
-    const SLOT_ICONS = { morning: '🌅', afternoon: '☀️', evening: '🌙' }
-    suggestions.forEach((spot, i) => {
-      const card = document.createElement('div')
-      card.className = 'suggestion-card'
+    suggestions.forEach(spot => {
+      const card = document.createElement('div'); card.className = 'suggestion-card'
       card.innerHTML = `
         <div class="s-icon">${spot.type === '美食' ? '🍜' : '🏛️'}</div>
         <div class="s-info">
           <span class="s-type ${spot.type || '景點'}">${spot.type || '景點'}</span>
           <div class="s-name">${spot.name}</div>
-          <div class="s-note">${spot.note || ''}</div>
+          <div class="s-note">${spot.note || ''}${spot.address ? '<br>📍 ' + spot.address : ''}</div>
         </div>
-        <span style="color:#FF6B6B;font-size:1.2rem;">›</span>
-      `
+        <span style="color:#FF6B6B;font-size:1.2rem;">›</span>`
       card.onclick = () => confirmSuggestion(spot)
       list.appendChild(card)
     })
@@ -523,104 +614,70 @@
   function confirmSuggestion(newSpot) {
     if (!pickerContext) return
     const { day, slot, spotName, itemEl } = pickerContext
-
-    // Update state
     const dayData = currentItinerary.itinerary.find(d => d.day === day)
-    if (dayData) {
-      const spots = dayData[slot] || []
-      const idx = spots.findIndex(s => s.name === spotName)
-      if (idx !== -1) spots[idx] = newSpot
+    if (dayData) { const spots = dayData[slot] || []; const idx = spots.findIndex(s => s.name === spotName); if (idx !== -1) spots[idx] = newSpot }
+    const newItem = buildSpotItem(newSpot, day, slot); itemEl.replaceWith(newItem)
+
+    // Update map marker if coords available
+    if (newSpot.lat && newSpot.lng && leafletMap && isInTaiwan(newSpot.lat, newSpot.lng)) {
+      const color = DAY_COLORS[(day - 1) % DAY_COLORS.length]
+      L.circleMarker([newSpot.lat, newSpot.lng], { color, fillColor: color, fillOpacity: 0.85, radius: 9, weight: 2 })
+        .addTo(leafletMap).bindPopup(`<b>${newSpot.name}</b><br><small>${newSpot.note || ''}</small>`)
     }
 
-    // Replace DOM
-    const newItem = buildSpotItem(newSpot, day, slot)
-    itemEl.replaceWith(newItem)
-    closePicker()
-    showToast(`✅ 已替換為「${newSpot.name}」`)
-    pickerContext = null
+    closePicker(); showToast(`✅ 已替換為「${newSpot.name}」`); pickerContext = null
   }
 
   function closePicker() {
     document.getElementById('pickerOverlay').classList.remove('active')
-    if (pickerContext) {
-      pickerContext.btnEl.disabled = false
-      pickerContext.btnEl.textContent = '換一個'
-    }
+    if (pickerContext) { pickerContext.btnEl.disabled = false; pickerContext.btnEl.textContent = '換一個' }
   }
+  function handleOverlayClick(e) { if (e.target === document.getElementById('pickerOverlay')) closePicker() }
 
-  function handleOverlayClick(e) {
-    if (e.target === document.getElementById('pickerOverlay')) closePicker()
-  }
-
-  // ── Screen 3: Generate Image ──
+  // ── Screen 3 ──
   async function generateImage() {
     if (!currentItinerary) return
     const titleText = document.getElementById('itineraryTitle').textContent
-
-    // Build structured itinerary for image prompt
     const structuredItinerary = currentItinerary.itinerary.map(day => ({
       day: day.day,
       morning:   (day.morning   || []).map(s => s.name),
       afternoon: (day.afternoon || []).map(s => s.name),
       evening:   (day.evening   || []).map(s => s.name)
     }))
-
     showScreen(3)
     document.getElementById('imageTitle').textContent = titleText
     document.getElementById('resultImage').classList.remove('loaded')
     document.getElementById('imagePlaceholder').classList.remove('hidden')
     document.getElementById('downloadBtn').disabled = true
     showLoading('AI 正在繪製旅遊圖片（約 30-60 秒）...')
-
     try {
       const res = await fetch(API.image, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: titleText, itinerary: structuredItinerary })
       })
       if (!res.ok) throw new Error('Webhook 回應錯誤')
-      const data = await res.json()
-      imageUrl = data.image_url
-
-      const img = document.getElementById('resultImage')
-      img.src = imageUrl
-      img.onload = () => {
-        img.classList.add('loaded')
-        document.getElementById('imagePlaceholder').classList.add('hidden')
-        document.getElementById('downloadBtn').disabled = false
-      }
+      const data = await res.json(); imageUrl = data.image_url
+      const img = document.getElementById('resultImage'); img.src = imageUrl
+      img.onload = () => { img.classList.add('loaded'); document.getElementById('imagePlaceholder').classList.add('hidden'); document.getElementById('downloadBtn').disabled = false }
       img.onerror = () => showToast('❌ 圖片載入失敗')
-    } catch (err) {
-      console.error(err)
-      showToast('❌ 圖片生成失敗，請稍後再試')
-    } finally {
-      hideLoading()
-    }
+    } catch (err) { console.error(err); showToast('❌ 圖片生成失敗，請稍後再試') }
+    finally { hideLoading() }
   }
 
-  // ── Download ──
   async function downloadImage() {
     if (!imageUrl) return
     try {
       if (imageUrl.startsWith('data:')) {
-        const a = document.createElement('a')
-        a.href = imageUrl
-        a.download = (document.getElementById('itineraryTitle').textContent || '台灣旅遊行程') + '.png'
-        a.click()
+        const a = document.createElement('a'); a.href = imageUrl
+        a.download = (document.getElementById('itineraryTitle').textContent || '台灣旅遊行程') + '.png'; a.click()
       } else {
-        const res = await fetch(imageUrl)
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = (document.getElementById('itineraryTitle').textContent || '台灣旅遊行程') + '.png'
-        a.click()
+        const res = await fetch(imageUrl); const blob = await res.blob()
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url
+        a.download = (document.getElementById('itineraryTitle').textContent || '台灣旅遊行程') + '.png'; a.click()
         URL.revokeObjectURL(url)
       }
       showToast('✅ 圖片已下載')
-    } catch {
-      window.open(imageUrl, '_blank')
-    }
+    } catch { window.open(imageUrl, '_blank') }
   }
 </script>
 </body>
