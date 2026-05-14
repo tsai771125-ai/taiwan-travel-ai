@@ -1,0 +1,72 @@
+{
+  "name": "generate-itinerary-v4",
+  "nodes": [
+    {
+      "parameters": { "httpMethod":"POST","path":"generate-itinerary","responseMode":"responseNode","options":{} },
+      "id":"node-webhook","name":"Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[250,300],"webhookId":"generate-itinerary"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst dest = body.destination || '台灣';\nconst dailyAreas = (body.daily_area || []).filter(a => a && a !== '不限區域');\nconst areasStr = dailyAreas.length > 0 ? dailyAreas.join(' ') : dest;\nconst preference = body.preference || '一般旅遊';\nconst spotQuery = `${dest} ${areasStr} 旅遊景點推薦 必去景點 ${preference} 評價`;\nconst foodQuery = `${dest} ${areasStr} 必吃美食推薦 在地美食 餐廳 小吃 2024`;\nconst activityQuery = `${dest} ${areasStr} 一日遊 體驗活動 旅遊行程 KKday Klook 推薦`;\nreturn [{ json: { body, spot_query: spotQuery, food_query: foodQuery, activity_query: activityQuery } }];"
+      },
+      "id":"node-prepare","name":"Prepare","type":"n8n-nodes-base.code","typeVersion":2,"position":[500,300]
+    },
+    {
+      "parameters": { "method":"POST","url":"https://google.serper.dev/search","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{ JSON.stringify({ q: $json.spot_query, gl: 'tw', hl: 'zh-tw', num: 8 }) }}","options":{} },
+      "id":"node-serper-spots","name":"Serper Spots","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[750,300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const spotResults = $input.first().json;\nconst prepareData = $('Prepare').first().json;\nconst spotSnippets = (spotResults.organic || []).slice(0, 6).map((r, i) => `[${i+1}] ${r.title}\\n${r.snippet || ''}`).join('\\n');\nreturn [{ json: { body: prepareData.body, food_query: prepareData.food_query, activity_query: prepareData.activity_query, spot_summary: spotSnippets } }];"
+      },
+      "id":"node-capture-spots","name":"Capture Spots","type":"n8n-nodes-base.code","typeVersion":2,"position":[1000,300]
+    },
+    {
+      "parameters": { "method":"POST","url":"https://google.serper.dev/search","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{ JSON.stringify({ q: $('Capture Spots').first().json.food_query, gl: 'tw', hl: 'zh-tw', num: 10 }) }}","options":{} },
+      "id":"node-serper-food","name":"Serper Food","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1250,300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const captured = $('Capture Spots').first().json;\nconst foodResults = $input.first().json;\nconst foodSnippets = (foodResults.organic || []).slice(0, 8).map((r, i) => `[${i+1}] ${r.title}: ${r.snippet || ''}`).join('\\n').substring(0, 2000);\nreturn [{ json: { body: captured.body, activity_query: captured.activity_query, spot_summary: captured.spot_summary, food_summary: foodSnippets } }];"
+      },
+      "id":"node-capture-food","name":"Capture Food","type":"n8n-nodes-base.code","typeVersion":2,"position":[1500,300]
+    },
+    {
+      "parameters": { "method":"POST","url":"https://google.serper.dev/search","authentication":"genericCredentialType","genericAuthType":"httpHeaderAuth","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{ JSON.stringify({ q: $('Capture Food').first().json.activity_query, gl: 'tw', hl: 'zh-tw', num: 6 }) }}","options":{} },
+      "id":"node-serper-activities","name":"Serper Activities","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1750,300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const capturedFood = $('Capture Food').first().json;\nconst body = capturedFood.body;\nconst actResults = $input.first().json;\n\nconst actSnippets = (actResults.organic || []).slice(0, 5).map((r, i) => `[${i+1}] ${r.title}: ${r.snippet || ''} ${r.link || ''}`).join('\\n').substring(0, 1500);\n\nconst dailyAreaArr = body.daily_area || [];\nconst dailyDirArr = body.daily_direction || [];\nconst dailyAreaStr = JSON.stringify(dailyAreaArr);\nconst dailyDirStr = dailyDirArr.map((d, i) => d ? `第 ${i+1} 天：${d}` : '').filter(Boolean).join('\\n') || '無';\n\nconst areaRules = dailyAreaArr.map((area, i) =>\n  area && area !== '不限區域'\n    ? `第 ${i+1} 天：所有景點【必須】在「${area}」範圍內，嚴禁安排其他區域景點`\n    : `第 ${i+1} 天：自由安排`\n).join('\\n');\n\nconst departHour = parseInt((body.depart_time || '09:00').split(':')[0]);\nconst returnHour = parseInt((body.return_time || '15:00').split(':')[0]);\n\nlet timeRules = '';\nif (departHour >= 11) timeRules += '- 第一天從下午開始排，不排早上景點\\n';\nelse if (departHour >= 10) timeRules += '- 第一天早上只排1個景點\\n';\nif (returnHour <= 11) timeRules += '- 最後一天不排任何景點\\n';\nelse if (returnHour <= 14) timeRules += '- 最後一天只排早上，不排下午\\n';\ntimeRules += `- 最後一天 ${body.return_time || '15:00'} 前2小時停止安排景點`;\n\nconst specialNote = body.special_request ? `特別需求（優先排入）：${body.special_request}` : '';\n\nconst systemPrompt = `你是台灣旅遊規劃專家。根據以下最新網路搜尋結果和使用者條件，規劃詳細的旅遊行程。請優先使用搜尋結果中出現的景點和餐廳。\n\n=== 最新景點搜尋結果 ===\n${capturedFood.spot_summary}\n\n=== 最新美食搜尋結果 ===\n${capturedFood.food_summary}\n\n=== KKday/Klook 體驗活動搜尋結果 ===\n${actSnippets}\n\n==== 每天區域限制（最高優先級，違反視為錯誤） ====\n${areaRules}\n例如：七星潭屬於吉安鄉，若第1天指定花蓮市區，七星潭絕對不可出現在第1天。\n\n重要規則：\n1. 只回傳純 JSON，不可加任何說明文字或 markdown\n2. 每天：早上2個、下午2個、晚上1個（時間規則例外）\n3. type 只能填「景點」或「美食\"\n4. note 是一句30字以內的中文介紹（根據搜尋結果整理）\n5. 每個景點必須提供 nearby_food（3-5 個真實店家）\n6. nearby_food 必須有具體店名，不接受籠統描述\n7. 夜市類景點的 nearby_food 改為夜市內 3-5 個具體必吃攤位\n8. 座標 lat/lng 必須準確（緯度 21-26.5，經度 118-123）\n9. maps_url 格式：https://maps.google.com/?q=景點名稱+城市\n10. 若 KKday/Klook 搜尋結果有相關體驗，加入 activities 陣列（最多2個）：[{\"title\":\"xxx\",\"platform\":\"KKday\",\"url\":\"xxx\",\"price_from\":\"NT$XXX 起\"}]；沒有則填空陣列\n\n時間邏輯（嚴格遵守）：\n早上只能排：自然景觀、博物館、老街、早市、咖啡廳（禁止夜市、夜景）\n下午只能排：景點參觀、下午茶、海灘、文創園區（禁止夜市、夜景）\n晚上只能排：夜市、夜景、燈會、晚餐名店（禁止一般白天景點）\n${timeRules}\n\n${specialNote}\n\n輸出格式（必須包含所有 ${body.days} 天，不可省略）：\n{\"title\":\"城市名\",\"days\":天數,\"itinerary\":[{\"day\":1,\"area\":\"區域名\",\"morning\":[{\"type\":\"景點\",\"name\":\"名稱\",\"note\":\"介紹\",\"address\":\"地址\",\"maps_url\":\"url\",\"lat\":00.0000,\"lng\":000.0000,\"nearby_food\":[{\"name\":\"店名\",\"type\":\"類型\",\"note\":\"介紹\",\"address\":\"地址\"}],\"activities\":[]}],\"afternoon\":[...],\"evening\":[...]}]}`;\n\nconst userMessage = `請為以下條件規劃行程：\\n目的地：${body.destination}，天數：${body.days}天\\n大人：${body.adults}人，小孩：${body.kids || 0}人\\n旅遊傾向：${body.preference}，住宿：${body.accommodation}\\n每天區域：${dailyAreaStr}\\n每天方向：${dailyDirStr}\\n\\n重要提醒：必須輸出完整的 ${body.days} 天行程，不可只輸出1天。`;\n\nconst maxTokens = Math.min(body.days * 2000 + 2000, 12000);\n\nreturn [{ json: { model: 'gpt-4o-mini', response_format: { type: 'json_object' }, temperature: 0.8, max_tokens: maxTokens, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }] } }];"
+      },
+      "id":"node-build-prompt","name":"Build Prompt","type":"n8n-nodes-base.code","typeVersion":2,"position":[2000,300]
+    },
+    {
+      "parameters": { "method":"POST","url":"https://api.openai.com/v1/chat/completions","authentication":"predefinedCredentialType","nodeCredentialType":"openAiApi","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{ JSON.stringify($json) }}","options":{} },
+      "id":"node-openai","name":"Call OpenAI","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[2250,300]
+    },
+    {
+      "parameters": { "jsCode":"const raw = $input.first().json.choices[0].message.content;\nconst result = JSON.parse(raw);\nreturn [{ json: result }];" },
+      "id":"node-parse","name":"Parse Response","type":"n8n-nodes-base.code","typeVersion":2,"position":[2500,300]
+    },
+    {
+      "parameters": { "respondWith":"json","responseBody":"={{ JSON.stringify($json) }}","options":{"responseHeaders":{"entries":[{"name":"Access-Control-Allow-Origin","value":"*"},{"name":"Content-Type","value":"application/json"}]}} },
+      "id":"node-respond","name":"Respond to Webhook","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.1,"position":[2750,300]
+    }
+  ],
+  "connections": {
+    "Webhook":            { "main": [[{"node":"Prepare",           "type":"main","index":0}]] },
+    "Prepare":            { "main": [[{"node":"Serper Spots",      "type":"main","index":0}]] },
+    "Serper Spots":       { "main": [[{"node":"Capture Spots",     "type":"main","index":0}]] },
+    "Capture Spots":      { "main": [[{"node":"Serper Food",       "type":"main","index":0}]] },
+    "Serper Food":        { "main": [[{"node":"Capture Food",      "type":"main","index":0}]] },
+    "Capture Food":       { "main": [[{"node":"Serper Activities", "type":"main","index":0}]] },
+    "Serper Activities":  { "main": [[{"node":"Build Prompt",      "type":"main","index":0}]] },
+    "Build Prompt":       { "main": [[{"node":"Call OpenAI",       "type":"main","index":0}]] },
+    "Call OpenAI":        { "main": [[{"node":"Parse Response",    "type":"main","index":0}]] },
+    "Parse Response":     { "main": [[{"node":"Respond to Webhook","type":"main","index":0}]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

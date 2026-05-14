@@ -8,180 +8,214 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
-      --primary: #FF6B6B; --primary-light: #FF8E8E;
-      --bg: #FFF9F0; --card-bg: #FFFFFF; --text: #2D3436; --text-light: #636E72;
-      --border: #EBEBEB;
-      --morning: #FFF3CD; --afternoon: #D4EDDA; --evening: #D1ECF1;
-      --morning-border: #FFCA28; --afternoon-border: #66BB6A; --evening-border: #26C6DA;
-      --food-color: #E67E22;
-      --shadow: 0 4px 20px rgba(0,0,0,0.08); --radius: 16px;
+      --primary:#FF6B6B;--primary-light:#FF8E8E;
+      --bg:#FFF9F0;--card-bg:#FFFFFF;--text:#2D3436;--text-light:#636E72;--border:#EBEBEB;
+      --morning:#FFF3CD;--afternoon:#D4EDDA;--evening:#D1ECF1;
+      --morning-border:#FFCA28;--afternoon-border:#66BB6A;--evening-border:#26C6DA;
+      --food:#E67E22;--activity:#9B59B6;--shadow:0 4px 20px rgba(0,0,0,.08);--radius:16px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI','PingFang TC','Noto Sans TC',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-    header { background: linear-gradient(135deg,#FF6B6B,#FF8E8E); color: white; padding: 20px 24px; text-align: center; }
-    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; }
-    header p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
-
-    .screen { display: none; max-width: 720px; margin: 0 auto; padding: 24px 16px; }
-    .screen.active { display: block; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI','PingFang TC','Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{background:linear-gradient(135deg,#FF6B6B,#FF8E8E);color:white;padding:20px 24px;text-align:center}
+    header h1{font-size:1.6rem;font-weight:700;letter-spacing:1px}
+    header p{font-size:.85rem;opacity:.85;margin-top:4px}
+    .screen{display:none;max-width:720px;margin:0 auto;padding:24px 16px}
+    .screen.active{display:block}
 
     /* Form */
-    .form-card { background: var(--card-bg); border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--shadow); }
-    .form-card h2 { font-size: 1.15rem; color: var(--primary); margin-bottom: 20px; }
-    .field { margin-bottom: 18px; }
-    .field label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .field-hint { font-size: 0.75rem; color: var(--text-light); margin-top: 4px; font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 400; }
-    select, input[type="text"], input[type="date"], textarea {
-      width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px;
-      font-size: 0.95rem; color: var(--text); background: #FAFAFA; transition: border-color 0.2s;
-      appearance: none; -webkit-appearance: none; font-family: inherit;
-    }
-    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23636E72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
-    input[type="date"] { appearance: auto; -webkit-appearance: auto; cursor: pointer; }
-    select:focus, input:focus, textarea:focus { outline: none; border-color: var(--primary); background: #FFF; }
-    textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
-    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .radio-group { display: flex; gap: 10px; }
-    .radio-group label { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: var(--text); transition: all 0.2s; text-transform: none; letter-spacing: 0; }
-    .radio-group input[type="radio"] { display: none; }
-    .radio-group label:has(input:checked) { border-color: var(--primary); background: #FFF0F0; color: var(--primary); }
-    .section-divider { margin: 20px 0 16px; padding-bottom: 10px; border-bottom: 2px solid var(--border); font-size: 0.9rem; font-weight: 700; color: var(--text-light); }
-
-    /* Days badge */
-    .days-badge { display: inline-flex; align-items: center; gap: 6px; background: #FFF0F0; border: 1.5px solid rgba(255,107,107,.3); border-radius: 20px; padding: 4px 14px; font-size: 0.85rem; font-weight: 700; color: var(--primary); margin-top: 8px; }
-
-    /* Per-day rows */
-    .day-plan-list { display: flex; flex-direction: column; gap: 12px; }
-    .day-plan-row { background: #FAFAFA; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; }
-    .day-plan-label { font-size: 0.82rem; font-weight: 700; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-    .day-plan-date { font-size: 0.75rem; color: var(--text-light); font-weight: 400; }
-    .day-plan-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .day-plan-fields select, .day-plan-fields input { padding: 8px 12px; font-size: 0.88rem; }
-    .day-plan-fields select { padding-right: 30px; }
-    .sub-field-label { font-size: 0.72rem; font-weight: 600; color: var(--text-light); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-card{background:var(--card-bg);border-radius:var(--radius);padding:28px 24px;box-shadow:var(--shadow)}
+    .form-card h2{font-size:1.15rem;color:var(--primary);margin-bottom:20px}
+    .field{margin-bottom:18px}
+    .field label{display:block;font-size:.82rem;font-weight:600;color:var(--text-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+    .field-hint{font-size:.75rem;color:var(--text-light);margin-top:4px;font-style:italic;text-transform:none;letter-spacing:0;font-weight:400}
+    select,input[type="text"],input[type="date"],textarea{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:.95rem;color:var(--text);background:#FAFAFA;transition:border-color .2s;appearance:none;-webkit-appearance:none;font-family:inherit}
+    select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23636E72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+    input[type="date"]{appearance:auto;-webkit-appearance:auto;cursor:pointer}
+    select:focus,input:focus,textarea:focus{outline:none;border-color:var(--primary);background:#FFF}
+    textarea{resize:vertical;min-height:72px;line-height:1.5}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .radio-group{display:flex;gap:10px}
+    .radio-group label{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:500;color:var(--text);transition:all .2s;text-transform:none;letter-spacing:0}
+    .radio-group input[type="radio"]{display:none}
+    .radio-group label:has(input:checked){border-color:var(--primary);background:#FFF0F0;color:var(--primary)}
+    .section-divider{margin:20px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--border);font-size:.9rem;font-weight:700;color:var(--text-light)}
+    .days-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF0F0;border:1.5px solid rgba(255,107,107,.3);border-radius:20px;padding:4px 14px;font-size:.85rem;font-weight:700;color:var(--primary);margin-top:8px}
+    .day-plan-list{display:flex;flex-direction:column;gap:12px}
+    .day-plan-row{background:#FAFAFA;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px}
+    .day-plan-label{font-size:.82rem;font-weight:700;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .day-plan-date{font-size:.75rem;color:var(--text-light);font-weight:400}
+    .day-plan-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .day-plan-fields select,.day-plan-fields input{padding:8px 12px;font-size:.88rem}
+    .day-plan-fields select{padding-right:30px}
+    .sub-field-label{font-size:.72rem;font-weight:600;color:var(--text-light);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
 
     /* Buttons */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 8px; }
-    .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,107,107,.35); }
-    .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); width: 100%; margin-top: 12px; }
-    .btn-secondary:hover { background: #FFF0F0; }
-    .btn-sm { padding: 6px 14px; font-size: 0.78rem; border-radius: 8px; background: #F0F0F0; color: var(--text-light); border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .btn-sm:hover { background: var(--primary); color: white; }
-    .btn-sm:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-action-row { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-primary{background:var(--primary);color:white;width:100%;margin-top:8px}
+    .btn-primary:hover{background:var(--primary-light);transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,107,107,.35)}
+    .btn-secondary{background:white;color:var(--primary);border:2px solid var(--primary);width:100%;margin-top:12px}
+    .btn-secondary:hover{background:#FFF0F0}
+    .btn-outline{background:white;border:2px solid var(--border);color:var(--text);width:100%;margin-top:12px}
+    .btn-outline:hover{border-color:var(--text-light);background:#F8F8F8}
+    .btn-sm{padding:6px 14px;font-size:.78rem;border-radius:8px;background:#F0F0F0;color:var(--text-light);border:none;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .btn-sm:hover{background:var(--primary);color:white}
+    .btn-sm:disabled{opacity:.4;cursor:not-allowed}
+    .btn-action-row{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 
     /* Loading */
-    .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.92); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
-    .loading-overlay.active { display: flex; }
-    .spinner { width: 52px; height: 52px; border: 4px solid #EEE; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-main { font-size: 1.05rem; color: var(--text); font-weight: 600; text-align: center; }
-    .loading-sub { font-size: 0.82rem; color: var(--text-light); text-align: center; max-width: 280px; line-height: 1.5; }
+    .loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+    .loading-overlay.active{display:flex}
+    .spinner{width:52px;height:52px;border:4px solid #EEE;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-main{font-size:1.05rem;color:var(--text);font-weight:600;text-align:center}
+    .loading-sub{font-size:.82rem;color:var(--text-light);text-align:center;max-width:280px;line-height:1.5}
 
     /* Map */
-    .map-section { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
-    .map-toggle-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; user-select: none; }
-    .map-toggle-bar span { font-size: 0.95rem; font-weight: 700; }
-    .map-toggle-bar .toggle-icon { font-size: 0.8rem; color: var(--text-light); transition: transform 0.2s; }
-    .map-toggle-bar .toggle-icon.open { transform: rotate(180deg); }
-    #map { height: 480px; }
-    .map-label { background: white !important; border: 1.5px solid #bbb !important; border-radius: 4px !important; font-size: 11px !important; font-weight: 700 !important; padding: 2px 6px !important; white-space: nowrap !important; box-shadow: 0 1px 5px rgba(0,0,0,.18) !important; }
-    .map-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 18px 14px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-light); }
-    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .map-section{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+    .map-toggle-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+    .map-toggle-bar span{font-size:.95rem;font-weight:700}
+    .toggle-icon{font-size:.8rem;color:var(--text-light);transition:transform .2s}
+    .toggle-icon.open{transform:rotate(180deg)}
+    #map{height:480px}
+    .map-label{background:white!important;border:1.5px solid #bbb!important;border-radius:4px!important;font-size:11px!important;font-weight:700!important;padding:2px 6px!important;white-space:nowrap!important;box-shadow:0 1px 5px rgba(0,0,0,.18)!important}
+    .map-legend{display:flex;gap:12px;flex-wrap:wrap;padding:10px 18px 14px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--text-light)}
+    .legend-dot{width:12px;height:12px;border-radius:50%}
 
     /* Itinerary */
-    .screen-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-    .screen-header h2 { font-size: 1.3rem; font-weight: 700; }
-    .trip-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
-    .day-card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
-    .day-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .day-area-badge { font-size: 0.72rem; font-weight: 600; background: #FFF0F0; color: var(--primary); padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(255,107,107,.3); }
-    .day-date-badge { font-size: 0.72rem; color: var(--text-light); font-weight: 400; }
+    .screen-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .screen-header h2{font-size:1.3rem;font-weight:700}
+    .trip-badge{background:var(--primary);color:white;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600}
+    .day-card{background:var(--card-bg);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+    .day-title{font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .day-area-badge{font-size:.72rem;font-weight:600;background:#FFF0F0;color:var(--primary);padding:2px 8px;border-radius:10px;border:1px solid rgba(255,107,107,.3)}
+    .day-date-badge{font-size:.72rem;color:var(--text-light);font-weight:400}
+    .weather-strip{display:flex;align-items:center;gap:10px;padding:8px 12px;background:linear-gradient(135deg,#EBF5FB,#D6EEF8);border-radius:10px;margin-bottom:12px;font-size:.82rem;flex-wrap:wrap}
+    .weather-warning{background:#FEF9E7;border-left:3px solid #F1C40F;padding:6px 10px;border-radius:6px;font-size:.78rem;color:#7D6608;margin-bottom:10px}
+    .time-slot{margin-bottom:14px}
+    .time-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .time-label.morning{color:#B7860B}.time-label.afternoon{color:#2D7D32}.time-label.evening{color:#00838F}
+    .spot-item{padding:10px 12px;border-radius:10px;margin-bottom:6px}
+    .morning .spot-item{background:var(--morning);border-left:3px solid var(--morning-border)}
+    .afternoon .spot-item{background:var(--afternoon);border-left:3px solid var(--afternoon-border)}
+    .evening .spot-item{background:var(--evening);border-left:3px solid var(--evening-border)}
 
-    /* Weather strip */
-    .weather-strip { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(135deg,#EBF5FB,#D6EEF8); border-radius: 10px; margin-bottom: 12px; font-size: 0.82rem; flex-wrap: wrap; }
-    .weather-strip .w-icon { font-size: 1.1rem; }
-    .weather-strip .w-desc { font-weight: 600; }
-    .weather-strip .w-temp { color: var(--text-light); }
-    .weather-strip .w-rain { color: #2980B9; }
-    .weather-warning { background: #FEF9E7; border-left: 3px solid #F1C40F; padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; color: #7D6608; margin-bottom: 10px; }
+    /* Spot photo */
+    .spot-photo{width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block}
 
-    .time-slot { margin-bottom: 14px; }
-    .time-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-    .time-label.morning { color: #B7860B; } .time-label.afternoon { color: #2D7D32; } .time-label.evening { color: #00838F; }
-    .spot-item { padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; }
-    .morning .spot-item { background: var(--morning); border-left: 3px solid var(--morning-border); }
-    .afternoon .spot-item { background: var(--afternoon); border-left: 3px solid var(--afternoon-border); }
-    .evening .spot-item { background: var(--evening); border-left: 3px solid var(--evening-border); }
-    .spot-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .spot-info { flex: 1; min-width: 0; }
-    .spot-type { font-size: 0.7rem; font-weight: 600; color: white; background: var(--text-light); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 3px; }
-    .spot-type.景點 { background: #8E44AD; } .spot-type.美食 { background: #E67E22; }
-    .spot-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 2px; }
-    .spot-note { font-size: 0.8rem; color: var(--text-light); margin-bottom: 4px; }
-    .spot-address { font-size: 0.76rem; color: var(--text-light); margin-bottom: 6px; }
-    .spot-footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .map-link { font-size: 0.76rem; color: var(--primary); text-decoration: none; background: rgba(255,107,107,.1); padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,107,107,.3); transition: all .2s; }
-    .map-link:hover { background: var(--primary); color: white; }
-    .food-toggle { font-size: 0.76rem; color: var(--food-color); background: rgba(230,126,34,.1); padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(230,126,34,.3); cursor: pointer; transition: all .2s; white-space: nowrap; }
-    .food-toggle:hover { background: var(--food-color); color: white; }
-    .food-list { margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,.75); border-radius: 10px; display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(230,126,34,.15); }
-    .food-list.hidden { display: none; }
-    .food-item { border-left: 3px solid var(--food-color); padding-left: 10px; }
-    .food-name { font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .food-tag { font-size: 0.68rem; background: var(--food-color); color: white; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
-    .food-note { font-size: 0.78rem; color: var(--text-light); margin-top: 2px; }
-    .food-addr { font-size: 0.72rem; color: var(--text-light); margin-top: 2px; }
-    .food-addr-note { font-size: 0.68rem; color: #B2BEC3; margin-top: 4px; font-style: italic; }
-    .sub-toggle { font-size: 0.76rem; color: var(--text-light); background: rgba(0,0,0,.06); padding: 3px 10px; border-radius: 6px; border: none; cursor: pointer; transition: all .2s; }
-    .sub-toggle:hover { background: rgba(0,0,0,.12); }
-    .sub-list { margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,.6); border-radius: 8px; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-    .sub-list.hidden { display: none; }
-    .sub-list li { font-size: 0.82rem; display: flex; align-items: center; gap: 6px; }
-    .sub-list li::before { content: "🍴"; font-size: 0.75rem; }
+    .spot-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .spot-info{flex:1;min-width:0}
+    .spot-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+    .spot-type{font-size:.7rem;font-weight:600;color:white;background:var(--text-light);padding:2px 7px;border-radius:4px}
+    .spot-type.景點{background:#8E44AD}.spot-type.美食{background:#E67E22}
+    .spot-rating{font-size:.78rem;color:#F39C12;font-weight:700}
+    .spot-rating-count{font-size:.72rem;color:var(--text-light);font-weight:400}
+    .spot-name{font-size:.95rem;font-weight:600;margin-bottom:2px}
+    .spot-note{font-size:.8rem;color:var(--text-light);margin-bottom:4px}
+    .spot-hours{font-size:.76rem;color:#27AE60;margin-bottom:4px}
+    .spot-hours.closed{color:#E74C3C}
+    .spot-address{font-size:.76rem;color:var(--text-light);margin-bottom:6px}
+    .spot-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .map-link{font-size:.76rem;color:var(--primary);text-decoration:none;background:rgba(255,107,107,.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(255,107,107,.3);transition:all .2s}
+    .map-link:hover{background:var(--primary);color:white}
+    .food-toggle{font-size:.76rem;color:var(--food);background:rgba(230,126,34,.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(230,126,34,.3);cursor:pointer;transition:all .2s;white-space:nowrap}
+    .food-toggle:hover{background:var(--food);color:white}
+    .food-list{margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.75);border-radius:10px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(230,126,34,.15)}
+    .food-list.hidden{display:none}
+    .food-item{border-left:3px solid var(--food);padding-left:10px}
+    .food-name{font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:6px}
+    .food-tag{font-size:.68rem;background:var(--food);color:white;padding:1px 6px;border-radius:4px;font-weight:600}
+    .food-note{font-size:.78rem;color:var(--text-light);margin-top:2px}
+    .food-addr{font-size:.72rem;color:var(--text-light);margin-top:2px}
+    .food-addr-note{font-size:.68rem;color:#B2BEC3;margin-top:4px;font-style:italic}
+    .sub-toggle{font-size:.76rem;color:var(--text-light);background:rgba(0,0,0,.06);padding:3px 10px;border-radius:6px;border:none;cursor:pointer;transition:all .2s}
+    .sub-toggle:hover{background:rgba(0,0,0,.12)}
+    .sub-list{margin-top:8px;padding:8px 12px;background:rgba(255,255,255,.6);border-radius:8px;list-style:none;display:flex;flex-direction:column;gap:4px}
+    .sub-list.hidden{display:none}
+    .sub-list li{font-size:.82rem;display:flex;align-items:center;gap:6px}
+    .sub-list li::before{content:"🍴";font-size:.75rem}
+
+    /* Activities (KKday/Klook) */
+    .act-toggle{font-size:.76rem;color:var(--activity);background:rgba(155,89,182,.1);padding:3px 10px;border-radius:6px;border:1px solid rgba(155,89,182,.3);cursor:pointer;transition:all .2s;white-space:nowrap}
+    .act-toggle:hover{background:var(--activity);color:white}
+    .act-list{margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.75);border-radius:10px;display:flex;flex-direction:column;gap:10px;border:1px solid rgba(155,89,182,.15)}
+    .act-list.hidden{display:none}
+    .act-item{border-left:3px solid var(--activity);padding-left:10px}
+    .act-name{font-size:.85rem;font-weight:600;margin-bottom:3px}
+    .act-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .act-platform{font-size:.68rem;font-weight:600;color:white;padding:1px 6px;border-radius:4px}
+    .act-platform.KKday{background:#E74C3C}.act-platform.Klook{background:#FF6600}
+    .act-price{font-size:.78rem;color:var(--text-light)}
+    .act-link{font-size:.76rem;color:var(--activity);text-decoration:none;font-weight:600}
+    .act-link:hover{text-decoration:underline}
+
+    /* Extras section */
+    .extras-section{background:var(--card-bg);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+    .extras-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+    .extras-title{font-size:1rem;font-weight:700}
+    .packing-category{margin-bottom:16px}
+    .packing-cat-title{font-size:.8rem;font-weight:700;color:var(--text-light);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+    .packing-items{display:flex;flex-wrap:wrap;gap:6px}
+    .packing-item{display:flex;align-items:center;gap:6px;padding:6px 12px;background:#F8F9FA;border-radius:20px;font-size:.82rem;cursor:pointer;border:1.5px solid var(--border);transition:all .2s;user-select:none}
+    .packing-item input[type="checkbox"]{width:14px;height:14px;cursor:pointer;accent-color:#27AE60}
+    .packing-item.checked{background:#D5F5E3;border-color:#27AE60}
+    .budget-table{width:100%;border-collapse:collapse;margin-top:4px}
+    .budget-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:.88rem}
+    .budget-table td:last-child{text-align:right;font-weight:600}
+    .budget-table .budget-note{font-size:.75rem;color:var(--text-light);font-weight:400}
+    .budget-total td{border-top:2px solid var(--text);font-weight:700;font-size:1rem;padding:12px}
+    .budget-disclaimer{font-size:.75rem;color:var(--text-light);margin-top:10px;font-style:italic}
 
     /* Image */
-    .image-card { background: var(--card-bg); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); text-align: center; }
-    .image-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
-    .image-card p { font-size: .85rem; color: var(--text-light); margin-bottom: 20px; }
-    .result-image { width: 100%; border-radius: 12px; margin-bottom: 20px; display: none; }
-    .result-image.loaded { display: block; }
-    .image-placeholder { width: 100%; padding-top: 56.25%; background: linear-gradient(135deg,#FFF3F3,#FFE0E0); border-radius: 12px; position: relative; margin-bottom: 20px; }
-    .image-placeholder.hidden { display: none; }
-    .image-placeholder-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-light); }
+    .image-card{background:var(--card-bg);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);text-align:center}
+    .image-card h2{font-size:1.2rem;font-weight:700;margin-bottom:6px}
+    .image-card p{font-size:.85rem;color:var(--text-light);margin-bottom:20px}
+    .result-image{width:100%;border-radius:12px;margin-bottom:20px;display:none}
+    .result-image.loaded{display:block}
+    .image-placeholder{width:100%;padding-top:56.25%;background:linear-gradient(135deg,#FFF3F3,#FFE0E0);border-radius:12px;position:relative;margin-bottom:20px}
+    .image-placeholder.hidden{display:none}
+    .image-placeholder-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text-light)}
 
     /* Picker */
-    .picker-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 150; align-items: flex-end; justify-content: center; }
-    .picker-overlay.active { display: flex; }
-    .picker-sheet { background: white; border-radius: 20px 20px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 720px; animation: slideUp .3s ease; max-height: 80vh; overflow-y: auto; }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    .picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-    .picker-title { font-size: 1rem; font-weight: 700; }
-    .picker-subtitle { font-size: .82rem; color: var(--text-light); margin-bottom: 16px; }
-    .picker-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-light); }
-    .suggestion-list { display: flex; flex-direction: column; gap: 10px; }
-    .suggestion-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; cursor: pointer; transition: all .2s; background: #FAFAFA; }
-    .suggestion-card:hover { border-color: var(--primary); background: #FFF0F0; transform: translateY(-1px); }
-    .suggestion-card .s-icon { font-size: 1.4rem; flex-shrink: 0; }
-    .suggestion-card .s-info { flex: 1; }
-    .suggestion-card .s-name { font-size: .95rem; font-weight: 600; }
-    .suggestion-card .s-note { font-size: .8rem; color: var(--text-light); margin-top: 2px; }
-    .suggestion-card .s-type { font-size: .7rem; font-weight: 600; color: white; padding: 2px 7px; border-radius: 4px; display: inline-block; margin-bottom: 3px; }
-    .suggestion-card .s-type.景點 { background: #8E44AD; } .suggestion-card .s-type.美食 { background: #E67E22; }
-    .picker-loading { text-align: center; padding: 32px; color: var(--text-light); }
+    .picker-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:150;align-items:flex-end;justify-content:center}
+    .picker-overlay.active{display:flex}
+    .picker-sheet{background:white;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:720px;animation:slideUp .3s ease;max-height:80vh;overflow-y:auto}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .picker-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+    .picker-title{font-size:1rem;font-weight:700}
+    .picker-subtitle{font-size:.82rem;color:var(--text-light);margin-bottom:16px}
+    .picker-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light)}
+    .suggestion-list{display:flex;flex-direction:column;gap:10px}
+    .suggestion-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;background:#FAFAFA}
+    .suggestion-card:hover{border-color:var(--primary);background:#FFF0F0;transform:translateY(-1px)}
+    .suggestion-card .s-icon{font-size:1.4rem;flex-shrink:0}
+    .suggestion-card .s-info{flex:1}
+    .suggestion-card .s-name{font-size:.95rem;font-weight:600}
+    .suggestion-card .s-note{font-size:.8rem;color:var(--text-light);margin-top:2px}
+    .suggestion-card .s-type{font-size:.7rem;font-weight:600;color:white;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:3px}
+    .suggestion-card .s-type.景點{background:#8E44AD}.suggestion-card .s-type.美食{background:#E67E22}
+    .picker-loading{text-align:center;padding:32px;color:var(--text-light)}
 
     /* Toast */
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #2D3436; color: white; padding: 12px 24px; border-radius: 30px; font-size: .88rem; font-weight: 500; z-index: 200; transition: transform .3s; white-space: nowrap; }
-    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#2D3436;color:white;padding:12px 24px;border-radius:30px;font-size:.88rem;font-weight:500;z-index:200;transition:transform .3s;white-space:nowrap}
+    .toast.show{transform:translateX(-50%) translateY(0)}
 
-    @media (max-width: 480px) {
-      header h1 { font-size: 1.3rem; }
-      .form-card { padding: 20px 16px; }
-      .field-row { grid-template-columns: 1fr; }
-      .day-plan-fields { grid-template-columns: 1fr; }
+    /* Print */
+    @media print {
+      header,#screen1,#screen3,.btn-action-row,.map-section,.btn-sm,
+      .picker-overlay,.toast,.loading-overlay,.extras-section { display:none!important }
+      #screen2 { display:block!important; max-width:100%; padding:0 }
+      .day-card { break-inside:avoid; box-shadow:none; border:1px solid #EEE; margin-bottom:10px; page-break-inside:avoid }
+      .spot-photo { height:100px }
+      body { font-size:12px; background:white }
+      .screen-header h2 { font-size:1rem }
+    }
+
+    @media (max-width:480px) {
+      header h1{font-size:1.3rem}
+      .form-card{padding:20px 16px}
+      .field-row{grid-template-columns:1fr}
+      .day-plan-fields{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -197,19 +231,13 @@
   <div class="loading-main" id="loadingText">🔍 搜尋最新景點資訊中...</div>
   <div class="loading-sub" id="loadingSub"></div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <div class="picker-overlay" id="pickerOverlay" onclick="handleOverlayClick(event)">
   <div class="picker-sheet">
-    <div class="picker-header">
-      <div class="picker-title">換一個景點</div>
-      <button class="picker-close" onclick="closePicker()">✕</button>
-    </div>
+    <div class="picker-header"><div class="picker-title">換一個景點</div><button class="picker-close" onclick="closePicker()">✕</button></div>
     <div class="picker-subtitle">選擇你喜歡的替代景點</div>
-    <div class="suggestion-list" id="suggestionList">
-      <div class="picker-loading">AI 正在推薦選項...</div>
-    </div>
+    <div class="suggestion-list" id="suggestionList"><div class="picker-loading">AI 正在推薦選項...</div></div>
   </div>
 </div>
 
@@ -217,124 +245,34 @@
 <div class="screen active" id="screen1">
   <div class="form-card">
     <h2>✈️ 填入旅遊條件</h2>
-
     <div class="field">
       <label>目的地</label>
       <select id="destination" onchange="onDestinationChange()">
-        <optgroup label="🏙️ 北部">
-          <option value="台北市" selected>台北市</option>
-          <option value="新北市">新北市</option>
-          <option value="基隆市">基隆市</option>
-          <option value="桃園市">桃園市</option>
-          <option value="新竹市">新竹市</option>
-          <option value="新竹縣">新竹縣</option>
-          <option value="宜蘭縣">宜蘭縣</option>
-        </optgroup>
-        <optgroup label="🌄 中部">
-          <option value="苗栗縣">苗栗縣</option>
-          <option value="台中市">台中市</option>
-          <option value="彰化縣">彰化縣</option>
-          <option value="南投縣">南投縣</option>
-          <option value="雲林縣">雲林縣</option>
-        </optgroup>
-        <optgroup label="☀️ 南部">
-          <option value="嘉義市">嘉義市</option>
-          <option value="嘉義縣">嘉義縣</option>
-          <option value="台南市">台南市</option>
-          <option value="高雄市">高雄市</option>
-          <option value="屏東縣">屏東縣</option>
-        </optgroup>
-        <optgroup label="🏔️ 東部">
-          <option value="花蓮縣">花蓮縣</option>
-          <option value="台東縣">台東縣</option>
-        </optgroup>
-        <optgroup label="🏝️ 離島">
-          <option value="澎湖縣">澎湖縣</option>
-          <option value="金門縣">金門縣</option>
-          <option value="連江縣（馬祖）">連江縣（馬祖）</option>
-          <option value="綠島">綠島</option>
-          <option value="蘭嶼">蘭嶼</option>
-        </optgroup>
+        <optgroup label="🏙️ 北部"><option value="台北市" selected>台北市</option><option value="新北市">新北市</option><option value="基隆市">基隆市</option><option value="桃園市">桃園市</option><option value="新竹市">新竹市</option><option value="新竹縣">新竹縣</option><option value="宜蘭縣">宜蘭縣</option></optgroup>
+        <optgroup label="🌄 中部"><option value="苗栗縣">苗栗縣</option><option value="台中市">台中市</option><option value="彰化縣">彰化縣</option><option value="南投縣">南投縣</option><option value="雲林縣">雲林縣</option></optgroup>
+        <optgroup label="☀️ 南部"><option value="嘉義市">嘉義市</option><option value="嘉義縣">嘉義縣</option><option value="台南市">台南市</option><option value="高雄市">高雄市</option><option value="屏東縣">屏東縣</option></optgroup>
+        <optgroup label="🏔️ 東部"><option value="花蓮縣">花蓮縣</option><option value="台東縣">台東縣</option></optgroup>
+        <optgroup label="🏝️ 離島"><option value="澎湖縣">澎湖縣</option><option value="金門縣">金門縣</option><option value="連江縣（馬祖）">連江縣（馬祖）</option><option value="綠島">綠島</option><option value="蘭嶼">蘭嶼</option></optgroup>
       </select>
     </div>
-
     <div class="field-row">
-      <div class="field">
-        <label>大人人數</label>
-        <select id="adults">
-          <option value="1">1 位</option><option value="2" selected>2 位</option>
-          <option value="3">3 位</option><option value="4">4 位</option>
-          <option value="5">5 位</option><option value="6">6 位</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>小孩人數</label>
-        <select id="kids">
-          <option value="0" selected>0 位</option><option value="1">1 位</option>
-          <option value="2">2 位</option><option value="3">3 位</option>
-          <option value="4">4 位</option><option value="5">5 位</option>
-        </select>
-      </div>
+      <div class="field"><label>大人人數</label><select id="adults"><option value="1">1 位</option><option value="2" selected>2 位</option><option value="3">3 位</option><option value="4">4 位</option><option value="5">5 位</option><option value="6">6 位</option></select></div>
+      <div class="field"><label>小孩人數</label><select id="kids"><option value="0" selected>0 位</option><option value="1">1 位</option><option value="2">2 位</option><option value="3">3 位</option><option value="4">4 位</option><option value="5">5 位</option></select></div>
     </div>
-
     <div class="field-row">
-      <div class="field">
-        <label>出發日期</label>
-        <input type="date" id="departDate" onchange="onDateChange()" />
-      </div>
-      <div class="field">
-        <label>回程日期</label>
-        <input type="date" id="returnDate" onchange="onDateChange()" />
-      </div>
+      <div class="field"><label>出發日期</label><input type="date" id="departDate" onchange="onDateChange()" /></div>
+      <div class="field"><label>回程日期</label><input type="date" id="returnDate" onchange="onDateChange()" /></div>
     </div>
     <div id="daysBadgeWrap"></div>
-
-    <div class="field" style="margin-top:18px;">
-      <label>每天行程安排</label>
-      <div class="day-plan-list" id="dayPlanList"></div>
-    </div>
-
+    <div class="field" style="margin-top:18px;"><label>每天行程安排</label><div class="day-plan-list" id="dayPlanList"></div></div>
     <div class="field-row">
-      <div class="field">
-        <label>出發時間</label>
-        <select id="departTime">
-          <option value="06:00">06:00</option><option value="07:00">07:00</option>
-          <option value="08:00">08:00</option><option value="09:00" selected>09:00</option>
-          <option value="10:00">10:00</option><option value="11:00">11:00</option>
-        </select>
-        <span class="field-hint">第一天幾點離開住宿出發</span>
-      </div>
-      <div class="field">
-        <label>回程時間</label>
-        <select id="returnTime">
-          <option value="11:00">11:00</option><option value="12:00">12:00</option>
-          <option value="13:00">13:00</option><option value="14:00">14:00</option>
-          <option value="15:00" selected>15:00</option><option value="16:00">16:00</option>
-          <option value="17:00">17:00</option><option value="18:00">18:00</option>
-        </select>
-        <span class="field-hint">最後一天幾點要到車站或機場</span>
-      </div>
+      <div class="field"><label>出發時間</label><select id="departTime"><option value="06:00">06:00</option><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00" selected>09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option></select><span class="field-hint">第一天幾點離開住宿出發</span></div>
+      <div class="field"><label>回程時間</label><select id="returnTime"><option value="11:00">11:00</option><option value="12:00">12:00</option><option value="13:00">13:00</option><option value="14:00">14:00</option><option value="15:00" selected>15:00</option><option value="16:00">16:00</option><option value="17:00">17:00</option><option value="18:00">18:00</option></select><span class="field-hint">最後一天幾點要到車站或機場</span></div>
     </div>
-
-    <div class="field">
-      <label>旅遊傾向</label>
-      <div class="radio-group">
-        <label><input type="radio" name="preference" value="一般旅遊" checked /><span>🏛️ 一般旅遊</span></label>
-        <label><input type="radio" name="preference" value="親子旅遊" /><span>👶 親子旅遊</span></label>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>住宿地點</label>
-      <input type="text" id="accommodation" placeholder="例：花蓮市區、台東知本..." value="台北市區" />
-    </div>
-
+    <div class="field"><label>旅遊傾向</label><div class="radio-group"><label><input type="radio" name="preference" value="一般旅遊" checked /><span>🏛️ 一般旅遊</span></label><label><input type="radio" name="preference" value="親子旅遊" /><span>👶 親子旅遊</span></label></div></div>
+    <div class="field"><label>住宿地點</label><input type="text" id="accommodation" placeholder="例：花蓮市區、台東知本..." value="台北市區" /></div>
     <div class="section-divider">✏️ 特別需求（選填）</div>
-    <div class="field">
-      <label>整體特別需求</label>
-      <textarea id="specialRequest" placeholder="例：想吃公正包子、不想爬山、希望輕鬆一點"></textarea>
-    </div>
-
+    <div class="field"><label>整體特別需求</label><textarea id="specialRequest" placeholder="例：想吃公正包子、不想爬山、希望輕鬆一點"></textarea></div>
     <button class="btn btn-primary" onclick="generateItinerary()">🚀 生成行程</button>
   </div>
 </div>
@@ -345,22 +283,25 @@
     <h2 id="itineraryTitle">台北市 2 天之旅</h2>
     <span class="trip-badge" id="itineraryBadge">2 天</span>
   </div>
-
   <div class="map-section">
-    <div class="map-toggle-bar" onclick="toggleMap()">
-      <span>🗺️ 行程地圖</span>
-      <span class="toggle-icon open" id="mapToggleIcon">▲</span>
-    </div>
-    <div id="mapContainer">
-      <div id="map"></div>
-      <div class="map-legend" id="mapLegend"></div>
-    </div>
+    <div class="map-toggle-bar" onclick="toggleMap()"><span>🗺️ 行程地圖</span><span class="toggle-icon open" id="mapToggleIcon">▲</span></div>
+    <div id="mapContainer"><div id="map"></div><div class="map-legend" id="mapLegend"></div></div>
   </div>
-
   <div id="itineraryContainer"></div>
+
+  <!-- Extras (packing + budget) -->
+  <div class="extras-section" id="extrasSection" style="display:none">
+    <div class="extras-header">
+      <div class="extras-title">📦 打包清單 + 💰 預算估算</div>
+    </div>
+    <div id="packingListContainer"></div>
+    <div id="budgetContainer" style="margin-top:20px"></div>
+  </div>
 
   <div class="btn-action-row">
     <button class="btn btn-primary" onclick="generateImage()">🎨 確認，生成旅遊圖片</button>
+    <button class="btn btn-secondary" id="extrasBtn" onclick="generateExtras()">📦 生成打包清單 + 預算估算</button>
+    <button class="btn btn-outline" onclick="exportPDF()">🖨️ 匯出 PDF</button>
     <button class="btn btn-secondary" onclick="showScreen(1)">← 重新填寫條件</button>
   </div>
 </div>
@@ -372,10 +313,7 @@
     <p>AI 為你的行程量身打造</p>
     <div class="image-placeholder" id="imagePlaceholder">
       <div class="image-placeholder-text">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
-        </svg>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <span>圖片生成中...</span>
       </div>
     </div>
@@ -387,15 +325,11 @@
 
 <script>
   const N8N_BASE = 'https://n8n-771125.zeabur.app/webhook'
-  const API = { generate: N8N_BASE + '/generate-itinerary', replace: N8N_BASE + '/replace-spot', image: N8N_BASE + '/generate-image' }
-
-  // ── Destination groups ──
-  const DEST_GROUPS = {
-    "北部": ["台北市","新北市","基隆市","桃園市","新竹市","新竹縣","宜蘭縣"],
-    "中部": ["苗栗縣","台中市","彰化縣","南投縣","雲林縣"],
-    "南部": ["嘉義市","嘉義縣","台南市","高雄市","屏東縣"],
-    "東部": ["花蓮縣","台東縣"],
-    "離島": ["澎湖縣","金門縣","連江縣（馬祖）","綠島","蘭嶼"]
+  const API = {
+    generate: N8N_BASE + '/generate-itinerary',
+    replace:  N8N_BASE + '/replace-spot',
+    image:    N8N_BASE + '/generate-image',
+    extras:   N8N_BASE + '/generate-extras'
   }
 
   const AREA_OPTIONS = {
@@ -405,22 +339,22 @@
     "桃園市":["不限區域","桃園市區","大溪區（老街、慈湖）","復興區（拉拉山、角板山）","龍潭區（小人國）"],
     "新竹市":["不限區域","新竹市區（城隍廟夜市）","新竹漁港（海鮮）"],
     "新竹縣":["不限區域","內灣老街","尖石鄉（司馬庫斯）","北埔鄉（客家文化）"],
-    "宜蘭縣":["不限區域","宜蘭市區（傳藝中心）","羅東鎮（夜市、林業園區）","礁溪鄉（溫泉、跑馬古道）","頭城鎮（蘭陽博物館、烏石港）","蘇澳鎮（南方澳、冷泉）","冬山鄉（冬山河）","南澳鄉（南澳古道）"],
-    "苗栗縣":["不限區域","三義鄉（木雕、勝興車站）","苗栗市區","南庄鄉（老街、桂花）","通霄鎮（通霄神社）"],
-    "台中市":["不限區域","中區（老市區、第二市場）","西區（草悟道、勤美誠品）","北區（一中商圈）","西屯區（逢甲夜市）","南屯區（忠孝夜市）","大坑區（大坑步道）","清水區（高美濕地）","梧棲區（台中港）","霧峰區（光復新村）"],
-    "彰化縣":["不限區域","彰化市區（八卦山、大佛）","鹿港鎮（天后宮、老街）","溪頭自然教育園區","田中鎮"],
+    "宜蘭縣":["不限區域","宜蘭市區（傳藝中心）","羅東鎮（夜市、林業園區）","礁溪鄉（溫泉）","頭城鎮（蘭陽博物館）","蘇澳鎮（南方澳、冷泉）","冬山鄉（冬山河）","南澳鄉（南澳古道）"],
+    "苗栗縣":["不限區域","三義鄉（木雕、勝興車站）","苗栗市區","南庄鄉（老街、桂花）","通霄鎮（神社）"],
+    "台中市":["不限區域","中區（老市區、第二市場）","西區（草悟道、勤美誠品）","北區（一中商圈）","西屯區（逢甲夜市）","南屯區（忠孝夜市）","大坑區（步道）","清水區（高美濕地）","梧棲區（台中港）","霧峰區（光復新村）"],
+    "彰化縣":["不限區域","彰化市區（八卦山、大佛）","鹿港鎮（天后宮、老街）","田中鎮","溪頭"],
     "南投縣":["不限區域","日月潭（水社、德化社）","清境農場","溪頭自然教育園區","集集鎮（綠色隧道）","竹山鎮（天梯）"],
-    "雲林縣":["不限區域","斗六市區","虎尾鎮（布袋戲館）","北港鎮（媽祖廟）","古坑鄉（咖啡、休閒農業）"],
+    "雲林縣":["不限區域","斗六市區","虎尾鎮（布袋戲館）","北港鎮（媽祖廟）","古坑鄉（咖啡）"],
     "嘉義市":["不限區域","嘉義市區（文化路夜市）","嘉義公園（射日塔）"],
-    "嘉義縣":["不限區域","阿里山鄉（森林鐵路、日出）","番路鄉（隙頂二延平步道）","大林鎮","布袋鎮（鹽田）"],
-    "台南市":["不限區域","中西區（赤崁樓、神農街）","安平區（古堡、老街）","東區（奇美博物館）","北區（成功大學、花園夜市）","安南區（四草綠色隧道）","玉井區（芒果）","關廟區（鳳梨、麵條）","新營區（白河蓮花）"],
-    "高雄市":["不限區域","鹽埕區（駁二藝術特區）","鼓山區（西子灣、哈瑪星）","左營區（蓮池潭、舊城）","三民區（瑞豐夜市）","苓雅區（六合夜市）","旗津區（旗津海灘）","美濃區（客家文化）","茂林區（紫蝶幽谷）","六龜區（荖濃溪）"],
-    "屏東縣":["不限區域","屏東市區（勝利星村）","墾丁（南灣、白沙）","恆春古城（古城門）","東港鎮（黑鮪魚、華僑市場）","琉球鄉（小琉球）","三地門（原住民文化）","霧台鄉（魯凱族）","萬巒鄉（萬巒豬腳）"],
-    "花蓮縣":["不限區域","花蓮市區（東大門夜市）","太魯閣（峽谷、燕子口）","新城鄉（清水斷崖）","吉安鄉（七星潭、慶修院）","壽豐鄉（鯉魚潭）","光復鄉（光復糖廠）","瑞穗鄉（溫泉、牧場）","富里鄉（六十石山）","玉里鎮"],
-    "台東縣":["不限區域","台東市區（鐵花村）","知本溫泉","池上鄉（伯朗大道、大波池）","成功鎮（三仙台）","綠島（朝日溫泉）","蘭嶼（達悟族文化）","關山鎮（環鎮自行車道）"],
+    "嘉義縣":["不限區域","阿里山鄉（森林鐵路、日出）","番路鄉（隙頂步道）","布袋鎮（鹽田）"],
+    "台南市":["不限區域","中西區（赤崁樓、神農街）","安平區（古堡、老街）","東區（奇美博物館）","北區（成功大學、花園夜市）","安南區（四草綠色隧道）","玉井區（芒果）","關廟區（鳳梨）","新營區（白河蓮花）"],
+    "高雄市":["不限區域","鹽埕區（駁二藝術特區）","鼓山區（西子灣）","左營區（蓮池潭）","三民區（瑞豐夜市）","旗津區（海灘）","美濃區（客家）","茂林區（紫蝶）","六龜區"],
+    "屏東縣":["不限區域","屏東市區（勝利星村）","墾丁（南灣、白沙）","恆春古城","東港鎮（黑鮪魚）","琉球鄉（小琉球）","三地門（原住民）","霧台鄉（魯凱族）","萬巒鄉（豬腳）"],
+    "花蓮縣":["不限區域","花蓮市區（東大門夜市）","太魯閣（峽谷、燕子口）","新城鄉（清水斷崖）","吉安鄉（七星潭）","壽豐鄉（鯉魚潭）","光復鄉（糖廠）","瑞穗鄉（溫泉）","富里鄉（六十石山）","玉里鎮"],
+    "台東縣":["不限區域","台東市區（鐵花村）","知本溫泉","池上鄉（伯朗大道）","成功鎮（三仙台）","綠島（朝日溫泉）","蘭嶼（達悟文化）"],
     "澎湖縣":["不限區域","馬公市區（天后宮）","白沙鄉（吉貝沙灘）","西嶼鄉（二崁聚落）","望安鄉（花嶼）","七美鄉（雙心石滬）"],
-    "金門縣":["不限區域","金城鎮（莒光樓、民俗文化村）","金湖鎮（太湖）","烈嶼鄉（小金門）"],
-    "連江縣（馬祖）":["不限區域","南竿（天后宮、北海坑道）","北竿（芹壁聚落）","東引（東引燈塔）"],
+    "金門縣":["不限區域","金城鎮（莒光樓）","金湖鎮（太湖）","烈嶼鄉（小金門）"],
+    "連江縣（馬祖）":["不限區域","南竿（天后宮、北海坑道）","北竿（芹壁聚落）","東引（燈塔）"],
     "綠島":["綠島全島（朝日溫泉、海底溫泉）"],
     "蘭嶼":["蘭嶼全島（達悟文化、飛魚季）"]
   }
@@ -436,392 +370,408 @@
     "連江縣（馬祖）":[26.1605,119.9500],"綠島":[22.6607,121.4958],"蘭嶼":[22.0553,121.5485]
   }
 
-  const DAY_COLORS = ['#4A90D9','#E67E22','#27AE60','#8E44AD','#E74C3C','#16A085','#8E44AD']
+  const DAY_COLORS = ['#4A90D9','#E67E22','#27AE60','#8E44AD','#E74C3C','#16A085','#D35400']
 
   const LOADING_MESSAGES = [
-    '🔍 搜尋最新景點資訊中...',
-    '🌤️ 查詢旅遊期間天氣預報...',
-    '🍜 尋找附近美食推薦...',
-    '📍 確認景點座標與地址...',
-    '🗺️ 規劃最佳路線...',
-    '✨ AI 整理完整行程中...',
-    '🎉 快完成了，請稍候！'
+    '🔍 搜尋最新景點資訊中...','🌤️ 確認旅遊期間資訊...','🍜 尋找附近美食推薦...',
+    '🎫 搜尋 KKday/Klook 相關體驗...','📍 確認景點座標與地址...','🗺️ 規劃最佳路線...',
+    '✨ AI 整理完整行程中...','🎉 快完成了，請稍候！'
   ]
 
-  let currentItinerary = null, currentParams = null, imageUrl = null
-  let pickerContext = null, leafletMap = null, mapOpen = true, loadingInterval = null
+  let currentItinerary=null, currentParams=null, imageUrl=null
+  let pickerContext=null, leafletMap=null, mapOpen=true, loadingInterval=null
 
   // ── Init ──
-  ;(function init() {
-    const today = new Date()
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
-    const dayAfter = new Date(today); dayAfter.setDate(today.getDate() + 3)
-    const fmt = d => d.toISOString().split('T')[0]
-    const dEl = document.getElementById('departDate')
-    const rEl = document.getElementById('returnDate')
-    dEl.min = fmt(today); dEl.value = fmt(tomorrow)
-    rEl.min = fmt(tomorrow); rEl.value = fmt(dayAfter)
-    onDestinationChange()
-    updateDayBadge()
-    updateDayPlans()
+  ;(function init(){
+    const today=new Date()
+    const d1=new Date(today); d1.setDate(today.getDate()+1)
+    const d2=new Date(today); d2.setDate(today.getDate()+3)
+    const fmt=d=>d.toISOString().split('T')[0]
+    const dEl=document.getElementById('departDate'), rEl=document.getElementById('returnDate')
+    dEl.min=fmt(today); dEl.value=fmt(d1)
+    rEl.min=fmt(d1); rEl.value=fmt(d2)
+    onDestinationChange(); updateDayBadge(); updateDayPlans()
   })()
 
-  function onDestinationChange() {
-    const dest = document.getElementById('destination').value
-    document.getElementById('accommodation').value = dest + '市區'
+  function onDestinationChange(){
+    const dest=document.getElementById('destination').value
+    document.getElementById('accommodation').value=dest+'市區'
     updateDayPlans()
   }
 
-  function onDateChange() {
-    const dEl = document.getElementById('departDate')
-    const rEl = document.getElementById('returnDate')
-    if (dEl.value && rEl.value <= dEl.value) {
-      const next = new Date(dEl.value); next.setDate(next.getDate() + 1)
-      rEl.value = next.toISOString().split('T')[0]
+  function onDateChange(){
+    const dEl=document.getElementById('departDate'), rEl=document.getElementById('returnDate')
+    if(dEl.value && rEl.value<=dEl.value){
+      const next=new Date(dEl.value); next.setDate(next.getDate()+1)
+      rEl.value=next.toISOString().split('T')[0]
     }
-    if (dEl.value) {
-      const minReturn = new Date(dEl.value); minReturn.setDate(minReturn.getDate() + 1)
-      rEl.min = minReturn.toISOString().split('T')[0]
-    }
-    updateDayBadge()
-    updateDayPlans()
+    if(dEl.value){ const m=new Date(dEl.value); m.setDate(m.getDate()+1); rEl.min=m.toISOString().split('T')[0] }
+    updateDayBadge(); updateDayPlans()
   }
 
-  function calcDays() {
-    const d1 = document.getElementById('departDate').value
-    const d2 = document.getElementById('returnDate').value
-    if (!d1 || !d2) return 2
-    const days = Math.ceil((new Date(d2) - new Date(d1)) / (1000*60*60*24))
-    return Math.max(1, Math.min(days, 7))
+  function calcDays(){
+    const d1=document.getElementById('departDate').value, d2=document.getElementById('returnDate').value
+    if(!d1||!d2) return 2
+    return Math.max(1,Math.min(Math.ceil((new Date(d2)-new Date(d1))/(864e5)),7))
   }
 
-  function updateDayBadge() {
-    const days = calcDays()
-    const wrap = document.getElementById('daysBadgeWrap')
-    wrap.innerHTML = `<div class="days-badge">🗓️ 共 ${days} 天</div>`
+  function updateDayBadge(){
+    document.getElementById('daysBadgeWrap').innerHTML=`<div class="days-badge">🗓️ 共 ${calcDays()} 天</div>`
   }
 
-  function getDateLabel(dayIndex) {
-    const d = document.getElementById('departDate').value
-    if (!d) return ''
-    const date = new Date(d); date.setDate(date.getDate() + dayIndex)
-    const m = date.getMonth() + 1, day = date.getDate()
-    const weekdays = ['日','一','二','三','四','五','六']
-    return `${m}/${day}（週${weekdays[date.getDay()]}）`
+  function getDateLabel(idx){
+    const d=document.getElementById('departDate').value; if(!d) return ''
+    const dt=new Date(d); dt.setDate(dt.getDate()+idx)
+    const m=dt.getMonth()+1, day=dt.getDate()
+    return `${m}/${day}（週${'日一二三四五六'[dt.getDay()]}）`
   }
 
-  function updateDayPlans() {
-    const days = calcDays()
-    const dest = document.getElementById('destination').value
-    const areas = AREA_OPTIONS[dest] || ['不限區域']
-    const list = document.getElementById('dayPlanList')
-    // Save existing values
-    const saved = []
-    for (let i = 1; i <= 7; i++) {
-      saved.push({ area: document.getElementById('dailyArea' + i)?.value || '', dir: document.getElementById('dailyDir' + i)?.value || '' })
-    }
-    list.innerHTML = ''
-    for (let i = 1; i <= days; i++) {
-      const dateLabel = getDateLabel(i - 1)
-      const row = document.createElement('div'); row.className = 'day-plan-row'
-      const areaOpts = areas.map(a => {
-        const val = a.split('（')[0]
-        const selected = saved[i-1]?.area === val ? ' selected' : ''
-        return `<option value="${val}"${selected}>${a}</option>`
-      }).join('')
-      row.innerHTML = `
-        <div class="day-plan-label">第 ${i} 天 <span class="day-plan-date">${dateLabel}</span></div>
-        <div class="day-plan-fields">
-          <div>
-            <div class="sub-field-label">主要區域</div>
-            <select id="dailyArea${i}">${areaOpts}</select>
-          </div>
-          <div>
-            <div class="sub-field-label">方向 / 備註（選填）</div>
-            <input type="text" id="dailyDir${i}" value="${saved[i-1]?.dir || ''}" placeholder="例：輕鬆步調、必吃美食" />
-          </div>
-        </div>`
+  function updateDayPlans(){
+    const days=calcDays(), dest=document.getElementById('destination').value
+    const areas=AREA_OPTIONS[dest]||['不限區域']
+    const list=document.getElementById('dayPlanList')
+    const saved=[]
+    for(let i=1;i<=7;i++) saved.push({area:document.getElementById('dailyArea'+i)?.value||'',dir:document.getElementById('dailyDir'+i)?.value||''})
+    list.innerHTML=''
+    for(let i=1;i<=days;i++){
+      const dateLabel=getDateLabel(i-1)
+      const row=document.createElement('div'); row.className='day-plan-row'
+      const areaOpts=areas.map(a=>{const v=a.split('（')[0];const sel=saved[i-1]?.area===v?' selected':'';return `<option value="${v}"${sel}>${a}</option>`}).join('')
+      row.innerHTML=`<div class="day-plan-label">第 ${i} 天 <span class="day-plan-date">${dateLabel}</span></div><div class="day-plan-fields"><div><div class="sub-field-label">主要區域</div><select id="dailyArea${i}">${areaOpts}</select></div><div><div class="sub-field-label">方向 / 備註（選填）</div><input type="text" id="dailyDir${i}" value="${saved[i-1]?.dir||''}" placeholder="例：輕鬆步調、必吃美食" /></div></div>`
       list.appendChild(row)
     }
   }
 
   // ── Utils ──
-  function showScreen(n) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
-    document.getElementById('screen' + n).classList.add('active')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    if (n === 2 && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 200)
+  function showScreen(n){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'))
+    document.getElementById('screen'+n).classList.add('active')
+    window.scrollTo({top:0,behavior:'smooth'})
+    if(n===2&&leafletMap) setTimeout(()=>leafletMap.invalidateSize(),200)
   }
 
-  function showLoading(text, sub = '') {
-    if (loadingInterval) { clearInterval(loadingInterval); loadingInterval = null }
-    const el = document.getElementById('loadingText')
-    document.getElementById('loadingSub').textContent = sub
-    if (text) {
-      el.textContent = text
-    } else {
-      el.textContent = LOADING_MESSAGES[0]
-      document.getElementById('loadingSub').textContent = 'AI 正在為你搜尋最新旅遊資訊，約需 30-60 秒'
-      let idx = 0
-      loadingInterval = setInterval(() => { idx = (idx + 1) % LOADING_MESSAGES.length; el.textContent = LOADING_MESSAGES[idx] }, 6000)
+  function showLoading(text,sub=''){
+    if(loadingInterval){clearInterval(loadingInterval);loadingInterval=null}
+    const el=document.getElementById('loadingText')
+    document.getElementById('loadingSub').textContent=sub
+    if(text){ el.textContent=text }
+    else{
+      el.textContent=LOADING_MESSAGES[0]
+      document.getElementById('loadingSub').textContent='AI 正在為你搜尋最新旅遊資訊，約需 30-60 秒'
+      let idx=0
+      loadingInterval=setInterval(()=>{idx=(idx+1)%LOADING_MESSAGES.length;el.textContent=LOADING_MESSAGES[idx]},6000)
     }
     document.getElementById('loadingOverlay').classList.add('active')
   }
-
-  function hideLoading() {
-    if (loadingInterval) { clearInterval(loadingInterval); loadingInterval = null }
+  function hideLoading(){
+    if(loadingInterval){clearInterval(loadingInterval);loadingInterval=null}
     document.getElementById('loadingOverlay').classList.remove('active')
   }
-
-  function showToast(msg, dur = 2500) {
-    const t = document.getElementById('toast'); t.textContent = msg
-    t.classList.add('show'); setTimeout(() => t.classList.remove('show'), dur)
+  function showToast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur)}
+  function getPreference(){return document.querySelector('input[name="preference"]:checked').value}
+  function isInTaiwan(lat,lng){return lat>=21&&lat<=26.5&&lng>=118&&lng<=123}
+  function getAllSpotNames(exDay,exSlot,exName){
+    const n=[]
+    if(!currentItinerary) return n
+    currentItinerary.itinerary.forEach(day=>{;['morning','afternoon','evening'].forEach(slot=>{;(day[slot]||[]).forEach(s=>{if(!(day.day===exDay&&slot===exSlot&&s.name===exName))n.push(s.name)})})})
+    return n
   }
 
-  function getPreference() { return document.querySelector('input[name="preference"]:checked').value }
-  function isInTaiwan(lat, lng) { return lat >= 21 && lat <= 26.5 && lng >= 118 && lng <= 123 }
-
-  function getAllSpotNames(excludeDay, excludeSlot, excludeName) {
-    const names = []
-    if (!currentItinerary) return names
-    currentItinerary.itinerary.forEach(day => {
-      ;['morning','afternoon','evening'].forEach(slot => {
-        ;(day[slot] || []).forEach(spot => {
-          if (!(day.day === excludeDay && slot === excludeSlot && spot.name === excludeName)) names.push(spot.name)
-        })
-      })
-    })
-    return names
-  }
-
-  // ── Screen 1: Generate ──
-  async function generateItinerary() {
-    const destination = document.getElementById('destination').value
-    const days = calcDays()
-    const adults = parseInt(document.getElementById('adults').value)
-    const kids = parseInt(document.getElementById('kids').value)
-    const preference = getPreference()
-    const accommodation = document.getElementById('accommodation').value.trim() || destination + '市區'
-    const depart_time = document.getElementById('departTime').value
-    const return_time = document.getElementById('returnTime').value
-    const depart_date = document.getElementById('departDate').value
-    const return_date = document.getElementById('returnDate').value
-    const special_request = document.getElementById('specialRequest').value.trim()
-    const daily_area = [], daily_direction = []
-    for (let i = 1; i <= days; i++) {
-      daily_area.push(document.getElementById('dailyArea' + i)?.value || '不限區域')
-      daily_direction.push((document.getElementById('dailyDir' + i)?.value || '').trim())
+  // ── Generate ──
+  async function generateItinerary(){
+    const destination=document.getElementById('destination').value
+    const days=calcDays(), adults=parseInt(document.getElementById('adults').value)
+    const kids=parseInt(document.getElementById('kids').value)
+    const preference=getPreference()
+    const accommodation=document.getElementById('accommodation').value.trim()||destination+'市區'
+    const depart_time=document.getElementById('departTime').value
+    const return_time=document.getElementById('returnTime').value
+    const depart_date=document.getElementById('departDate').value
+    const return_date=document.getElementById('returnDate').value
+    const special_request=document.getElementById('specialRequest').value.trim()
+    const daily_area=[],daily_direction=[]
+    for(let i=1;i<=days;i++){
+      daily_area.push(document.getElementById('dailyArea'+i)?.value||'不限區域')
+      daily_direction.push((document.getElementById('dailyDir'+i)?.value||'').trim())
     }
-
-    currentParams = { destination, days, adults, kids, preference, accommodation, depart_time, return_time, depart_date, return_date }
+    currentParams={destination,days,adults,kids,preference,accommodation,depart_time,return_time,depart_date,return_date}
+    document.getElementById('extrasSection').style.display='none'
     showLoading()
-
-    try {
-      const res = await fetch(API.generate, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination, days, adults, kids, preference, accommodation, depart_time, return_time, depart_date, return_date, special_request, daily_area, daily_direction })
-      })
-      if (!res.ok) throw new Error('Webhook 回應錯誤：' + res.status)
-      const data = await res.json()
-      currentItinerary = data
-      renderItinerary(data)
-      initMap(data.itinerary, destination)
-      showScreen(2)
-    } catch (err) {
-      console.error(err); showToast('❌ 生成失敗，請確認 n8n Webhook 是否正確設定')
-    } finally { hideLoading() }
+    try{
+      const res=await fetch(API.generate,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,days,adults,kids,preference,accommodation,depart_time,return_time,depart_date,return_date,special_request,daily_area,daily_direction})})
+      if(!res.ok) throw new Error('Webhook 回應錯誤：'+res.status)
+      const data=await res.json()
+      currentItinerary=data; renderItinerary(data); initMap(data.itinerary,destination); showScreen(2)
+    }catch(err){console.error(err);showToast('❌ 生成失敗，請確認 n8n Webhook 是否正確設定')}
+    finally{hideLoading()}
   }
 
   // ── Map ──
-  function toggleMap() {
-    mapOpen = !mapOpen
-    document.getElementById('mapContainer').style.display = mapOpen ? '' : 'none'
-    document.getElementById('mapToggleIcon').classList.toggle('open', mapOpen)
-    if (mapOpen && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 100)
+  function toggleMap(){
+    mapOpen=!mapOpen
+    document.getElementById('mapContainer').style.display=mapOpen?'':'none'
+    document.getElementById('mapToggleIcon').classList.toggle('open',mapOpen)
+    if(mapOpen&&leafletMap) setTimeout(()=>leafletMap.invalidateSize(),100)
   }
 
-  function initMap(itinerary, destination) {
-    const center = CITY_CENTERS[destination] || [23.9769, 121.6044]
-    if (leafletMap) { leafletMap.remove(); leafletMap = null }
-    leafletMap = L.map('map')
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(leafletMap)
-    const bounds = [], usedDays = new Set()
-    itinerary.forEach((day, dayIdx) => {
-      const color = DAY_COLORS[dayIdx % DAY_COLORS.length]
-      ;['morning','afternoon','evening'].forEach(slot => {
-        ;(day[slot] || []).forEach(spot => {
-          if (!spot.lat || !spot.lng || !isInTaiwan(spot.lat, spot.lng)) return
-          bounds.push([spot.lat, spot.lng]); usedDays.add(dayIdx)
-          const marker = L.circleMarker([spot.lat, spot.lng], { color, fillColor: color, fillOpacity: 0.9, radius: 10, weight: 2 }).addTo(leafletMap)
-          marker.bindTooltip(spot.name, { permanent: true, direction: 'top', offset: [0,-12], className: 'map-label' }).openTooltip()
-          const slotLabel = slot === 'morning' ? '早上' : slot === 'afternoon' ? '下午' : '晚上'
-          marker.bindPopup(`<b>${spot.name}</b><br>第 ${day.day} 天 ${slotLabel}<br>${spot.note || ''}${spot.maps_url ? `<br><a href="${spot.maps_url}" target="_blank">📍 Google Maps</a>` : ''}`)
+  function initMap(itinerary,destination){
+    const center=CITY_CENTERS[destination]||[23.9769,121.6044]
+    if(leafletMap){leafletMap.remove();leafletMap=null}
+    leafletMap=L.map('map')
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(leafletMap)
+    const bounds=[],usedDays=new Set()
+    itinerary.forEach((day,dayIdx)=>{
+      const color=DAY_COLORS[dayIdx%DAY_COLORS.length]
+      ;['morning','afternoon','evening'].forEach(slot=>{
+        ;(day[slot]||[]).forEach(spot=>{
+          if(!spot.lat||!spot.lng||!isInTaiwan(spot.lat,spot.lng)) return
+          bounds.push([spot.lat,spot.lng]); usedDays.add(dayIdx)
+          const m=L.circleMarker([spot.lat,spot.lng],{color,fillColor:color,fillOpacity:.9,radius:10,weight:2}).addTo(leafletMap)
+          m.bindTooltip(spot.name,{permanent:true,direction:'top',offset:[0,-12],className:'map-label'}).openTooltip()
+          const slotLabel=slot==='morning'?'早上':slot==='afternoon'?'下午':'晚上'
+          m.bindPopup(`<b>${spot.name}</b><br>第 ${day.day} 天 ${slotLabel}<br>${spot.note||''}${spot.maps_url?`<br><a href="${spot.maps_url}" target="_blank">📍 Maps</a>`:''}`)
         })
       })
     })
-    if (bounds.length > 0) leafletMap.fitBounds(L.latLngBounds(bounds), { padding: [50,50] })
-    else leafletMap.setView(center, 13)
-    const legend = document.getElementById('mapLegend'); legend.innerHTML = ''
-    usedDays.forEach(idx => {
-      const item = document.createElement('div'); item.className = 'legend-item'
-      item.innerHTML = `<span class="legend-dot" style="background:${DAY_COLORS[idx]}"></span><span>第 ${idx+1} 天</span>`
-      legend.appendChild(item)
-    })
+    if(bounds.length>0) leafletMap.fitBounds(L.latLngBounds(bounds),{padding:[50,50]})
+    else leafletMap.setView(center,13)
+    const legend=document.getElementById('mapLegend'); legend.innerHTML=''
+    usedDays.forEach(idx=>{const item=document.createElement('div');item.className='legend-item';item.innerHTML=`<span class="legend-dot" style="background:${DAY_COLORS[idx]}"></span><span>第 ${idx+1} 天</span>`;legend.appendChild(item)})
   }
 
-  // ── Itinerary Render ──
-  function renderItinerary(data) {
-    const dest = data.title || currentParams?.destination || '台灣'
-    const daysCount = data.days || data.itinerary?.length || 1
-    document.getElementById('itineraryTitle').textContent = `${dest} ${daysCount} 天之旅`
-    document.getElementById('itineraryBadge').textContent = `${daysCount} 天`
-    const container = document.getElementById('itineraryContainer'); container.innerHTML = ''
-    ;(data.itinerary || []).forEach(dayData => container.appendChild(buildDayCard(dayData)))
+  // ── Render ──
+  function renderItinerary(data){
+    const dest=data.title||currentParams?.destination||'台灣'
+    const daysCount=data.days||data.itinerary?.length||1
+    document.getElementById('itineraryTitle').textContent=`${dest} ${daysCount} 天之旅`
+    document.getElementById('itineraryBadge').textContent=`${daysCount} 天`
+    const container=document.getElementById('itineraryContainer'); container.innerHTML=''
+    ;(data.itinerary||[]).forEach(dayData=>container.appendChild(buildDayCard(dayData)))
   }
 
-  const SLOT_META = {
-    morning:   { label: '早上', emoji: '🌅', class: 'morning' },
-    afternoon: { label: '下午', emoji: '☀️', class: 'afternoon' },
-    evening:   { label: '晚上', emoji: '🌙', class: 'evening' }
-  }
+  const SLOT_META={morning:{label:'早上',emoji:'🌅',class:'morning'},afternoon:{label:'下午',emoji:'☀️',class:'afternoon'},evening:{label:'晚上',emoji:'🌙',class:'evening'}}
 
-  function buildDayCard(dayData) {
-    const card = document.createElement('div'); card.className = 'day-card'; card.dataset.day = dayData.day
-    const dateLabel = getDateLabel(dayData.day - 1)
-    const title = document.createElement('div'); title.className = 'day-title'
-    title.innerHTML = `第 ${dayData.day} 天${dateLabel ? ` <span class="day-date-badge">${dateLabel}</span>` : ''}${dayData.area ? ` <span class="day-area-badge">📍 ${dayData.area}</span>` : ''}`
+  function buildDayCard(dayData){
+    const card=document.createElement('div'); card.className='day-card'; card.dataset.day=dayData.day
+    const dateLabel=getDateLabel(dayData.day-1)
+    const title=document.createElement('div'); title.className='day-title'
+    title.innerHTML=`第 ${dayData.day} 天${dateLabel?` <span class="day-date-badge">${dateLabel}</span>`:''}${dayData.area?` <span class="day-area-badge">📍 ${dayData.area}</span>`:''}`
     card.appendChild(title)
-
-    // Weather strip (if weather data exists)
-    if (dayData.weather) {
-      const w = dayData.weather
-      const strip = document.createElement('div'); strip.className = 'weather-strip'
-      strip.innerHTML = `<span class="w-icon">${w.rain_chance >= 60 ? '🌧️' : w.rain_chance >= 30 ? '🌦️' : '☀️'}</span><span class="w-desc">${w.description || ''}</span><span class="w-temp">${w.min_temp}–${w.max_temp}°C</span><span class="w-rain">💧 ${w.rain_chance}%</span>`
+    if(dayData.weather){
+      const w=dayData.weather
+      const strip=document.createElement('div'); strip.className='weather-strip'
+      strip.innerHTML=`<span>${w.rain_chance>=60?'🌧️':w.rain_chance>=30?'🌦️':'☀️'}</span><span style="font-weight:600">${w.description||''}</span><span style="color:var(--text-light)">${w.min_temp}–${w.max_temp}°C</span><span style="color:#2980B9">💧 ${w.rain_chance}%</span>`
       card.appendChild(strip)
-      if (w.warning) { const warn = document.createElement('div'); warn.className = 'weather-warning'; warn.textContent = w.warning; card.appendChild(warn) }
+      if(w.warning){const warn=document.createElement('div');warn.className='weather-warning';warn.textContent=w.warning;card.appendChild(warn)}
     }
-
-    ;['morning','afternoon','evening'].forEach(slot => {
-      const spots = dayData[slot] || []; const meta = SLOT_META[slot]
-      const slotDiv = document.createElement('div'); slotDiv.className = 'time-slot'
-      const labelDiv = document.createElement('div'); labelDiv.className = `time-label ${meta.class}`
-      labelDiv.textContent = `${meta.emoji} ${meta.label}`; slotDiv.appendChild(labelDiv)
-      spots.forEach(spot => slotDiv.appendChild(buildSpotItem(spot, dayData.day, slot)))
+    ;['morning','afternoon','evening'].forEach(slot=>{
+      const spots=dayData[slot]||[]; const meta=SLOT_META[slot]
+      const slotDiv=document.createElement('div'); slotDiv.className='time-slot'
+      const labelDiv=document.createElement('div'); labelDiv.className=`time-label ${meta.class}`
+      labelDiv.textContent=`${meta.emoji} ${meta.label}`; slotDiv.appendChild(labelDiv)
+      spots.forEach(spot=>slotDiv.appendChild(buildSpotItem(spot,dayData.day,slot)))
       card.appendChild(slotDiv)
     })
     return card
   }
 
-  function buildSpotItem(spot, day, slot) {
-    const item = document.createElement('div')
-    item.className = `spot-item ${SLOT_META[slot].class}`
-    item.dataset.name = spot.name
-    const top = document.createElement('div'); top.className = 'spot-top'
-    const info = document.createElement('div'); info.className = 'spot-info'
-    const typeTag = document.createElement('span'); typeTag.className = `spot-type ${spot.type || ''}`; typeTag.textContent = spot.type || '景點'; info.appendChild(typeTag)
-    const name = document.createElement('div'); name.className = 'spot-name'; name.textContent = spot.name; info.appendChild(name)
-    if (spot.note) { const n = document.createElement('div'); n.className = 'spot-note'; n.textContent = spot.note; info.appendChild(n) }
-    if (spot.address) { const a = document.createElement('div'); a.className = 'spot-address'; a.textContent = '📍 ' + spot.address; info.appendChild(a) }
-    const footer = document.createElement('div'); footer.className = 'spot-footer'
-    if (spot.maps_url) { const ml = document.createElement('a'); ml.className = 'map-link'; ml.href = spot.maps_url; ml.target = '_blank'; ml.rel = 'noopener'; ml.textContent = '🗺️ 地圖'; footer.appendChild(ml) }
-    const nearbyFood = spot.nearby_food && spot.nearby_food.length > 0 ? spot.nearby_food : null
-    if (nearbyFood) {
-      const foodBtn = document.createElement('button'); foodBtn.className = 'food-toggle'
-      foodBtn.textContent = `🍜 附近美食 ${nearbyFood.length} 個 ▼`
-      const foodList = document.createElement('div'); foodList.className = 'food-list hidden'
-      nearbyFood.forEach(food => {
-        const fi = document.createElement('div'); fi.className = 'food-item'
-        const foodName = typeof food === 'string' ? food : food.name
-        fi.innerHTML = `<div class="food-name">${foodName}${food.type ? `<span class="food-tag">${food.type}</span>` : ''}</div>${food.note ? `<div class="food-note">${food.note}</div>` : ''}${food.address ? `<div class="food-addr">📍 ${food.address}</div>` : ''}`
-        foodList.appendChild(fi)
-      })
-      const note = document.createElement('div'); note.className = 'food-addr-note'; note.textContent = '⚠️ 地址僅供參考，建議點地圖確認'; foodList.appendChild(note)
-      foodBtn.onclick = () => { const open = foodList.classList.toggle('hidden') === false; foodBtn.textContent = open ? `🍜 附近美食 ${nearbyFood.length} 個 ▲` : `🍜 附近美食 ${nearbyFood.length} 個 ▼` }
-      footer.appendChild(foodBtn); info.appendChild(footer); info.appendChild(foodList)
-    } else if (spot.sub_items && spot.sub_items.length > 0) {
-      const toggle = document.createElement('button'); toggle.className = 'sub-toggle'; toggle.textContent = '展開必吃 ▼'
-      const list = document.createElement('ul'); list.className = 'sub-list hidden'
-      spot.sub_items.forEach(si => { const li = document.createElement('li'); li.textContent = typeof si === 'string' ? si : (si.name || si.item || ''); list.appendChild(li) })
-      toggle.onclick = () => { const open = list.classList.toggle('hidden') === false; toggle.textContent = open ? '收起必吃 ▲' : '展開必吃 ▼' }
-      footer.appendChild(toggle); info.appendChild(footer); info.appendChild(list)
+  function buildSpotItem(spot,day,slot){
+    const item=document.createElement('div'); item.className=`spot-item ${SLOT_META[slot].class}`; item.dataset.name=spot.name
+    // Photo (Google Places or Unsplash)
+    if(spot.photo_url){const img=document.createElement('img');img.className='spot-photo';img.src=spot.photo_url;img.alt=spot.name;img.onerror=()=>img.remove();item.appendChild(img)}
+    const top=document.createElement('div'); top.className='spot-top'
+    const info=document.createElement('div'); info.className='spot-info'
+    // Meta row: type + rating
+    const meta=document.createElement('div'); meta.className='spot-meta'
+    const typeTag=document.createElement('span'); typeTag.className=`spot-type ${spot.type||''}`; typeTag.textContent=spot.type||'景點'; meta.appendChild(typeTag)
+    if(spot.rating){meta.innerHTML+=`<span class="spot-rating">★ ${spot.rating}</span><span class="spot-rating-count">(${spot.rating_count||0}則)</span>`}
+    info.appendChild(meta)
+    const name=document.createElement('div'); name.className='spot-name'; name.textContent=spot.name; info.appendChild(name)
+    if(spot.note){const n=document.createElement('div');n.className='spot-note';n.textContent=spot.note;info.appendChild(n)}
+    // Opening hours
+    if(spot.opening_hours){
+      const h=document.createElement('div')
+      const isOpen=spot.opening_hours.is_open_now
+      h.className='spot-hours'+(isOpen===false?' closed':'')
+      h.textContent=isOpen===false?'❌ 今日休館，建議更換景點':'🕐 '+(spot.opening_hours.today||'查看開放時間')
+      info.appendChild(h)
+    }
+    if(spot.address){const a=document.createElement('div');a.className='spot-address';a.textContent='📍 '+spot.address;info.appendChild(a)}
+    const footer=document.createElement('div'); footer.className='spot-footer'
+    if(spot.maps_url){const ml=document.createElement('a');ml.className='map-link';ml.href=spot.maps_url;ml.target='_blank';ml.rel='noopener';ml.textContent='🗺️ 地圖';footer.appendChild(ml)}
+    // Nearby food
+    const nf=spot.nearby_food&&spot.nearby_food.length>0?spot.nearby_food:null
+    if(nf){
+      const fb=document.createElement('button'); fb.className='food-toggle'; fb.textContent=`🍜 附近美食 ${nf.length} 個 ▼`
+      const fl=document.createElement('div'); fl.className='food-list hidden'
+      nf.forEach(f=>{const fi=document.createElement('div');fi.className='food-item';const fn=typeof f==='string'?f:f.name;fi.innerHTML=`<div class="food-name">${fn}${f.type?`<span class="food-tag">${f.type}</span>`:''}</div>${f.note?`<div class="food-note">${f.note}</div>`:''}${f.address?`<div class="food-addr">📍 ${f.address}</div>`:''}`; fl.appendChild(fi)})
+      const fn=document.createElement('div');fn.className='food-addr-note';fn.textContent='⚠️ 地址僅供參考，建議點地圖確認';fl.appendChild(fn)
+      fb.onclick=()=>{const o=fl.classList.toggle('hidden')===false;fb.textContent=o?`🍜 附近美食 ${nf.length} 個 ▲`:`🍜 附近美食 ${nf.length} 個 ▼`}
+      footer.appendChild(fb); info.appendChild(footer); info.appendChild(fl)
+    } else if(spot.sub_items&&spot.sub_items.length>0){
+      const tog=document.createElement('button');tog.className='sub-toggle';tog.textContent='展開必吃 ▼'
+      const sl=document.createElement('ul');sl.className='sub-list hidden'
+      spot.sub_items.forEach(si=>{const li=document.createElement('li');li.textContent=typeof si==='string'?si:(si.name||si.item||'');sl.appendChild(li)})
+      tog.onclick=()=>{const o=sl.classList.toggle('hidden')===false;tog.textContent=o?'收起必吃 ▲':'展開必吃 ▼'}
+      footer.appendChild(tog); info.appendChild(footer); info.appendChild(sl)
     } else { info.appendChild(footer) }
-    const btn = document.createElement('button'); btn.className = 'btn-sm'; btn.textContent = '換一個'
-    btn.onclick = () => openPicker(day, slot, spot.name, item, btn)
+    // Activities (KKday/Klook)
+    if(spot.activities&&spot.activities.length>0){
+      const at=spot.activities
+      const ab=document.createElement('button'); ab.className='act-toggle'; ab.textContent=`🎫 相關體驗 ${at.length} 個 ▼`
+      const al=document.createElement('div'); al.className='act-list hidden'
+      at.forEach(a=>{
+        const ai=document.createElement('div'); ai.className='act-item'
+        ai.innerHTML=`<div class="act-name">${a.title||a.name||''}</div><div class="act-meta"><span class="act-platform ${a.platform||''}">${a.platform||''}</span>${a.price_from?`<span class="act-price">${a.price_from}</span>`:''}${a.url?`<a class="act-link" href="${a.url}" target="_blank" rel="noopener">查看 →</a>`:''}</div>`
+        al.appendChild(ai)
+      })
+      ab.onclick=()=>{const o=al.classList.toggle('hidden')===false;ab.textContent=o?`🎫 相關體驗 ${at.length} 個 ▲`:`🎫 相關體驗 ${at.length} 個 ▼`}
+      const actFooter=document.createElement('div');actFooter.className='spot-footer';actFooter.appendChild(ab)
+      info.appendChild(actFooter); info.appendChild(al)
+    }
+    const btn=document.createElement('button');btn.className='btn-sm';btn.textContent='換一個';btn.onclick=()=>openPicker(day,slot,spot.name,item,btn)
     top.appendChild(info); top.appendChild(btn); item.appendChild(top)
     return item
   }
 
   // ── Picker ──
-  async function openPicker(day, slot, spotName, itemEl, btnEl) {
-    pickerContext = { day, slot, spotName, itemEl, btnEl }
-    btnEl.disabled = true; btnEl.textContent = '載入中...'
-    document.getElementById('suggestionList').innerHTML = '<div class="picker-loading">AI 正在推薦選項...</div>'
+  async function openPicker(day,slot,spotName,itemEl,btnEl){
+    pickerContext={day,slot,spotName,itemEl,btnEl}
+    btnEl.disabled=true; btnEl.textContent='載入中...'
+    document.getElementById('suggestionList').innerHTML='<div class="picker-loading">AI 正在推薦選項...</div>'
     document.getElementById('pickerOverlay').classList.add('active')
-    try {
-      const res = await fetch(API.replace, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: currentParams?.destination || '台灣', day, slot, replace_spot: spotName, keep_spots: getAllSpotNames(day, slot, spotName), preference: currentParams?.preference || '一般旅遊' })
-      })
-      if (!res.ok) throw new Error('Webhook 回應錯誤')
-      const data = await res.json(); renderSuggestions(data.suggestions || [])
-    } catch (err) { console.error(err); closePicker(); showToast('❌ 取得建議失敗，請稍後再試') }
-    finally { btnEl.disabled = false; btnEl.textContent = '換一個' }
+    try{
+      const res=await fetch(API.replace,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination:currentParams?.destination||'台灣',day,slot,replace_spot:spotName,keep_spots:getAllSpotNames(day,slot,spotName),preference:currentParams?.preference||'一般旅遊'})})
+      if(!res.ok) throw new Error()
+      const data=await res.json(); renderSuggestions(data.suggestions||[])
+    }catch{closePicker();showToast('❌ 取得建議失敗，請稍後再試')}
+    finally{btnEl.disabled=false;btnEl.textContent='換一個'}
+  }
+  function renderSuggestions(suggestions){
+    const list=document.getElementById('suggestionList')
+    if(!suggestions.length){list.innerHTML='<div class="picker-loading">沒有找到建議景點</div>';return}
+    list.innerHTML=''
+    suggestions.forEach(spot=>{
+      const card=document.createElement('div');card.className='suggestion-card'
+      card.innerHTML=`<div class="s-icon">${spot.type==='美食'?'🍜':'🏛️'}</div><div class="s-info"><span class="s-type ${spot.type||'景點'}">${spot.type||'景點'}</span><div class="s-name">${spot.name}</div><div class="s-note">${spot.note||''}${spot.address?'<br>📍 '+spot.address:''}</div></div><span style="color:#FF6B6B;font-size:1.2rem;">›</span>`
+      card.onclick=()=>confirmSuggestion(spot); list.appendChild(card)
+    })
+  }
+  function confirmSuggestion(newSpot){
+    if(!pickerContext) return
+    const{day,slot,spotName,itemEl}=pickerContext
+    const dayData=currentItinerary.itinerary.find(d=>d.day===day)
+    if(dayData){const spots=dayData[slot]||[];const idx=spots.findIndex(s=>s.name===spotName);if(idx!==-1)spots[idx]=newSpot}
+    const newItem=buildSpotItem(newSpot,day,slot); itemEl.replaceWith(newItem)
+    if(newSpot.lat&&newSpot.lng&&leafletMap&&isInTaiwan(newSpot.lat,newSpot.lng)){
+      const c=DAY_COLORS[(day-1)%DAY_COLORS.length]
+      const m=L.circleMarker([newSpot.lat,newSpot.lng],{color:c,fillColor:c,fillOpacity:.9,radius:10,weight:2}).addTo(leafletMap)
+      m.bindTooltip(newSpot.name,{permanent:true,direction:'top',offset:[0,-12],className:'map-label'}).openTooltip()
+    }
+    closePicker(); showToast(`✅ 已替換為「${newSpot.name}」`); pickerContext=null
+  }
+  function closePicker(){document.getElementById('pickerOverlay').classList.remove('active');if(pickerContext){pickerContext.btnEl.disabled=false;pickerContext.btnEl.textContent='換一個'}}
+  function handleOverlayClick(e){if(e.target===document.getElementById('pickerOverlay'))closePicker()}
+
+  // ── Extras (packing + budget) ──
+  async function generateExtras(){
+    if(!currentItinerary) return
+    const btn=document.getElementById('extrasBtn')
+    btn.disabled=true; btn.textContent='⏳ 生成中...'
+    showLoading('📦 AI 正在生成打包清單與預算估算...')
+    const spots=[]
+    currentItinerary.itinerary.forEach(d=>{;['morning','afternoon','evening'].forEach(s=>{;(d[s]||[]).forEach(sp=>spots.push(sp.name))})})
+    try{
+      const res=await fetch(API.extras,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        destination:currentParams.destination, days:currentParams.days,
+        depart_date:currentParams.depart_date, return_date:currentParams.return_date,
+        adults:currentParams.adults, kids:currentParams.kids,
+        preference:currentParams.preference, spots
+      })})
+      if(!res.ok) throw new Error()
+      const data=await res.json()
+      renderPackingList(data.packing_list||{})
+      renderBudget(data.budget||{})
+      document.getElementById('extrasSection').style.display='block'
+      document.getElementById('extrasSection').scrollIntoView({behavior:'smooth',block:'start'})
+    }catch(err){console.error(err);showToast('❌ 生成失敗，請確認 Workflow 4 是否已建立')}
+    finally{hideLoading();btn.disabled=false;btn.textContent='📦 重新生成打包清單 + 預算估算'}
   }
 
-  function renderSuggestions(suggestions) {
-    const list = document.getElementById('suggestionList')
-    if (!suggestions.length) { list.innerHTML = '<div class="picker-loading">沒有找到建議景點</div>'; return }
-    list.innerHTML = ''
-    suggestions.forEach(spot => {
-      const card = document.createElement('div'); card.className = 'suggestion-card'
-      card.innerHTML = `<div class="s-icon">${spot.type === '美食' ? '🍜' : '🏛️'}</div><div class="s-info"><span class="s-type ${spot.type || '景點'}">${spot.type || '景點'}</span><div class="s-name">${spot.name}</div><div class="s-note">${spot.note || ''}${spot.address ? '<br>📍 ' + spot.address : ''}</div></div><span style="color:#FF6B6B;font-size:1.2rem;">›</span>`
-      card.onclick = () => confirmSuggestion(spot); list.appendChild(card)
+  function renderPackingList(list){
+    const ICONS={'必帶':'📋','衣物':'👕','保養防護':'🧴','景點專用':'🎒','小孩專用':'👶','其他':'📦'}
+    const container=document.getElementById('packingListContainer')
+    container.innerHTML='<div style="font-size:.95rem;font-weight:700;margin-bottom:14px;">📦 打包清單</div>'
+    Object.entries(list).forEach(([cat,items])=>{
+      if(!items||!items.length) return
+      const div=document.createElement('div'); div.className='packing-category'
+      div.innerHTML=`<div class="packing-cat-title">${ICONS[cat]||'📦'} ${cat}</div>`
+      const wrap=document.createElement('div'); wrap.className='packing-items'
+      items.forEach(item=>{
+        const label=document.createElement('label'); label.className='packing-item'
+        const cb=document.createElement('input'); cb.type='checkbox'
+        cb.onchange=()=>label.classList.toggle('checked',cb.checked)
+        label.appendChild(cb); label.appendChild(document.createTextNode(item))
+        wrap.appendChild(label)
+      })
+      div.appendChild(wrap); container.appendChild(div)
     })
   }
 
-  function confirmSuggestion(newSpot) {
-    if (!pickerContext) return
-    const { day, slot, spotName, itemEl } = pickerContext
-    const dayData = currentItinerary.itinerary.find(d => d.day === day)
-    if (dayData) { const spots = dayData[slot] || []; const idx = spots.findIndex(s => s.name === spotName); if (idx !== -1) spots[idx] = newSpot }
-    const newItem = buildSpotItem(newSpot, day, slot); itemEl.replaceWith(newItem)
-    if (newSpot.lat && newSpot.lng && leafletMap && isInTaiwan(newSpot.lat, newSpot.lng)) {
-      const color = DAY_COLORS[(day-1) % DAY_COLORS.length]
-      const m = L.circleMarker([newSpot.lat, newSpot.lng], { color, fillColor: color, fillOpacity: 0.9, radius: 10, weight: 2 }).addTo(leafletMap)
-      m.bindTooltip(newSpot.name, { permanent: true, direction: 'top', offset: [0,-12], className: 'map-label' }).openTooltip()
+  function renderBudget(budget){
+    const container=document.getElementById('budgetContainer')
+    container.innerHTML='<div style="font-size:.95rem;font-weight:700;margin-bottom:14px;">💰 預估旅遊費用</div>'
+    if(!budget.items) return
+    const table=document.createElement('table'); table.className='budget-table'
+    budget.items.forEach(item=>{
+      const tr=document.createElement('tr')
+      tr.innerHTML=`<td>${item.label||''}${item.note?`<br><span class="budget-note">${item.note}</span>`:''}</td><td>${item.amount||'-'}</td>`
+      table.appendChild(tr)
+    })
+    if(budget.total){
+      const tr=document.createElement('tr'); tr.className='budget-total'
+      tr.innerHTML=`<td>預估合計</td><td>${budget.total}</td>`
+      table.appendChild(tr)
     }
-    closePicker(); showToast(`✅ 已替換為「${newSpot.name}」`); pickerContext = null
+    container.appendChild(table)
+    if(budget.disclaimer){const d=document.createElement('div');d.className='budget-disclaimer';d.textContent=budget.disclaimer;container.appendChild(d)}
   }
 
-  function closePicker() { document.getElementById('pickerOverlay').classList.remove('active'); if (pickerContext) { pickerContext.btnEl.disabled = false; pickerContext.btnEl.textContent = '換一個' } }
-  function handleOverlayClick(e) { if (e.target === document.getElementById('pickerOverlay')) closePicker() }
+  // ── PDF Export ──
+  function exportPDF(){
+    document.title=document.getElementById('itineraryTitle').textContent+' 行程'
+    window.print()
+    setTimeout(()=>document.title='台灣旅遊行程規劃',1000)
+  }
 
-  // ── Screen 3 ──
-  async function generateImage() {
-    if (!currentItinerary) return
-    const titleText = document.getElementById('itineraryTitle').textContent
-    const structuredItinerary = currentItinerary.itinerary.map(day => ({ day: day.day, morning: (day.morning||[]).map(s=>s.name), afternoon: (day.afternoon||[]).map(s=>s.name), evening: (day.evening||[]).map(s=>s.name) }))
-    showScreen(3); document.getElementById('imageTitle').textContent = titleText
+  // ── Image ──
+  async function generateImage(){
+    if(!currentItinerary) return
+    const titleText=document.getElementById('itineraryTitle').textContent
+    const si=currentItinerary.itinerary.map(d=>({day:d.day,morning:(d.morning||[]).map(s=>s.name),afternoon:(d.afternoon||[]).map(s=>s.name),evening:(d.evening||[]).map(s=>s.name)}))
+    showScreen(3)
+    document.getElementById('imageTitle').textContent=titleText
     document.getElementById('resultImage').classList.remove('loaded')
     document.getElementById('imagePlaceholder').classList.remove('hidden')
-    document.getElementById('downloadBtn').disabled = true
+    document.getElementById('downloadBtn').disabled=true
     showLoading('🎨 AI 正在繪製旅遊圖片（約 30-60 秒）...')
-    try {
-      const res = await fetch(API.image, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: titleText, itinerary: structuredItinerary }) })
-      if (!res.ok) throw new Error('Webhook 回應錯誤')
-      const data = await res.json(); imageUrl = data.image_url
-      const img = document.getElementById('resultImage'); img.src = imageUrl
-      img.onload = () => { img.classList.add('loaded'); document.getElementById('imagePlaceholder').classList.add('hidden'); document.getElementById('downloadBtn').disabled = false }
-      img.onerror = () => showToast('❌ 圖片載入失敗')
-    } catch (err) { console.error(err); showToast('❌ 圖片生成失敗，請稍後再試') } finally { hideLoading() }
+    try{
+      const res=await fetch(API.image,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:titleText,itinerary:si})})
+      if(!res.ok) throw new Error()
+      const data=await res.json(); imageUrl=data.image_url
+      const img=document.getElementById('resultImage'); img.src=imageUrl
+      img.onload=()=>{img.classList.add('loaded');document.getElementById('imagePlaceholder').classList.add('hidden');document.getElementById('downloadBtn').disabled=false}
+      img.onerror=()=>showToast('❌ 圖片載入失敗')
+    }catch(err){console.error(err);showToast('❌ 圖片生成失敗，請稍後再試')}
+    finally{hideLoading()}
   }
-
-  async function downloadImage() {
-    if (!imageUrl) return
-    try {
-      if (imageUrl.startsWith('data:')) { const a = document.createElement('a'); a.href = imageUrl; a.download = document.getElementById('itineraryTitle').textContent + '.png'; a.click() }
-      else { const blob = await fetch(imageUrl).then(r => r.blob()); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = document.getElementById('itineraryTitle').textContent + '.png'; a.click(); URL.revokeObjectURL(url) }
+  async function downloadImage(){
+    if(!imageUrl) return
+    try{
+      if(imageUrl.startsWith('data:')){const a=document.createElement('a');a.href=imageUrl;a.download=document.getElementById('itineraryTitle').textContent+'.png';a.click()}
+      else{const blob=await fetch(imageUrl).then(r=>r.blob());const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=document.getElementById('itineraryTitle').textContent+'.png';a.click();URL.revokeObjectURL(url)}
       showToast('✅ 圖片已下載')
-    } catch { window.open(imageUrl, '_blank') }
+    }catch{window.open(imageUrl,'_blank')}
   }
 </script>
 </body>

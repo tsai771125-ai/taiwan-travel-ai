@@ -1,0 +1,85 @@
+{
+  "name": "generate-extras",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-extras",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "generate-extras"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst destination = body.destination || '台灣';\nconst days = body.days || 2;\nconst adults = body.adults || 2;\nconst kids = body.kids || 0;\nconst spots = (body.spots || []).slice(0, 15).join('、');\nconst depart_date = body.depart_date || '';\nconst preference = body.preference || '一般旅遊';\n\n// 推算季節\nlet season = '夏季';\nif (depart_date) {\n  const month = parseInt(depart_date.split('-')[1]);\n  if (month >= 3 && month <= 5) season = '春季';\n  else if (month >= 6 && month <= 8) season = '夏季';\n  else if (month >= 9 && month <= 11) season = '秋季';\n  else season = '冬季';\n}\n\nconst hasKids = kids > 0;\nconst hasBeach = spots.includes('海灘') || spots.includes('海邊') || spots.includes('沙灘') || spots.includes('漁港') || spots.includes('七星潭') || spots.includes('墾丁') || spots.includes('旗津');\nconst hasMountain = spots.includes('步道') || spots.includes('山') || spots.includes('太魯閣') || spots.includes('清境') || spots.includes('阿里山') || spots.includes('大坑');\nconst hasHotspring = spots.includes('溫泉');\n\nconst systemPrompt = `你是旅遊規劃助手。根據旅遊資訊生成打包清單和費用估算，輸出純 JSON。\n\n重要：只回傳純 JSON，不可加入任何說明文字或 markdown 語法。\n\n輸出格式：\n{\n  \"packing_list\": {\n    \"必帶\": [\"身份證\", \"健保卡\", \"現金 NT$XXXX\", \"手機充電線\"],\n    \"衣物\": [\"依季節和景點填入 3-5 項\"],\n    \"保養防護\": [\"防曬乳 SPF50+\", ...根據有無海灘/山岳填入],\n    \"景點專用\": [依景點類型填入，如有海灘填泳衣/防水袋，有山填登山鞋等],\n    \"小孩專用\": [只在 has_kids=true 時填入，否則省略此欄]\n  },\n  \"budget\": {\n    \"items\": [\n      {\"label\": \"景點門票\", \"amount\": \"NT$ X,XXX\", \"note\": \"主要付費景點估算\"},\n      {\"label\": \"餐飲費用\", \"amount\": \"NT$ X,XXX\", \"note\": \"人均 NT$XXX × N人 × N天 × 3餐\"},\n      {\"label\": \"交通費用\", \"amount\": \"NT$ X,XXX\", \"note\": \"依目的地估算（高鐵/台鐵/自駕）\"},\n      {\"label\": \"住宿費用\", \"amount\": \"自行安排\", \"note\": \"建議預算 NT$XXXX–XXXX/晚\"}\n    ],\n    \"total\": \"約 NT$ X,XXX–X,XXX\",\n    \"disclaimer\": \"不含住宿、個人消費及不可預期費用\"\n  }\n}`;\n\nconst userMessage = `目的地：${destination}，天數：${days}天\\n季節：${season}，大人：${adults}人，小孩：${kids}人\\n旅遊傾向：${preference}\\n景點包含：${spots}\\n有海灘：${hasBeach}，有山岳：${hasMountain}，有溫泉：${hasHotspring}，有小孩：${hasKids}`;\n\nreturn [{ json: { model: 'gpt-4o-mini', response_format: { type: 'json_object' }, temperature: 0.7, max_tokens: 2000, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }] } }];"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "node-openai",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.choices[0].message.content;\nconst result = JSON.parse(raw);\nreturn [{ json: result }];"
+      },
+      "id": "node-parse",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook":        { "main": [[{"node": "Build Prompt",   "type": "main", "index": 0}]] },
+    "Build Prompt":   { "main": [[{"node": "Call OpenAI",    "type": "main", "index": 0}]] },
+    "Call OpenAI":    { "main": [[{"node": "Parse Response", "type": "main", "index": 0}]] },
+    "Parse Response": { "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}
