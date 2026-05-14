@@ -324,6 +324,7 @@
 </div>
 
 <script>
+  const UNSPLASH_KEY = 'tHd4qdz88rUTEOwwyVG9WokIUF3nWST-iqXsomEM2W4'
   const N8N_BASE = 'https://n8n-771125.zeabur.app/webhook'
   const API = {
     generate: N8N_BASE + '/generate-itinerary',
@@ -470,6 +471,22 @@
   function showToast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur)}
   function getPreference(){return document.querySelector('input[name="preference"]:checked').value}
   function isInTaiwan(lat,lng){return lat>=21&&lat<=26.5&&lng>=118&&lng<=123}
+
+  // ── Unsplash 懶載入 ──
+  const _unsplashCache = {}
+  async function loadSpotPhoto(keyword, imgEl) {
+    if (!keyword) return
+    if (_unsplashCache[keyword]) { imgEl.src = _unsplashCache[keyword]; return }
+    try {
+      const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' Taiwan travel')}&per_page=1&orientation=landscape`, {
+        headers: { 'Authorization': `Client-ID ${UNSPLASH_KEY}` }
+      })
+      const data = await res.json()
+      const url = data.results?.[0]?.urls?.regular
+      if (url) { _unsplashCache[keyword] = url; imgEl.src = url }
+      else imgEl.remove()
+    } catch { imgEl.remove() }
+  }
   function getAllSpotNames(exDay,exSlot,exName){
     const n=[]
     if(!currentItinerary) return n
@@ -577,8 +594,15 @@
 
   function buildSpotItem(spot,day,slot){
     const item=document.createElement('div'); item.className=`spot-item ${SLOT_META[slot].class}`; item.dataset.name=spot.name
-    // Photo (Google Places or Unsplash)
-    if(spot.photo_url){const img=document.createElement('img');img.className='spot-photo';img.src=spot.photo_url;img.alt=spot.name;img.onerror=()=>img.remove();item.appendChild(img)}
+    // Photo：優先用 photo_url（Google Places），其次用 photo_keyword（Unsplash 懶載入）
+    if(spot.photo_url){
+      const img=document.createElement('img');img.className='spot-photo';img.src=spot.photo_url;img.alt=spot.name;img.onerror=()=>img.remove();item.appendChild(img)
+    } else if(spot.photo_keyword){
+      const img=document.createElement('img');img.className='spot-photo';img.alt=spot.name
+      img.style.background='linear-gradient(135deg,#f0f0f0,#e0e0e0)'
+      item.appendChild(img)
+      loadSpotPhoto(spot.photo_keyword, img)
+    }
     const top=document.createElement('div'); top.className='spot-top'
     const info=document.createElement('div'); info.className='spot-info'
     // Meta row: type + rating
