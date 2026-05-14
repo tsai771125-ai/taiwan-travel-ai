@@ -195,6 +195,14 @@
     .suggestion-card .s-type{font-size:.7rem;font-weight:600;color:white;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:3px}
     .suggestion-card .s-type.景點{background:#8E44AD}.suggestion-card .s-type.美食{background:#E67E22}
     .picker-loading{text-align:center;padding:32px;color:var(--text-light)}
+    .picker-custom-row{display:flex;gap:8px;margin-bottom:12px}
+    .picker-custom-row input{flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:.9rem;font-family:inherit}
+    .picker-custom-row input:focus{outline:none;border-color:var(--primary)}
+    .picker-custom-btn{padding:10px 18px;background:var(--primary);color:white;border:none;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap}
+    .picker-custom-btn:hover{background:var(--primary-light)}
+    .picker-divider{text-align:center;font-size:.78rem;color:var(--text-light);margin-bottom:12px;position:relative}
+    .picker-divider::before,.picker-divider::after{content:'';position:absolute;top:50%;width:30%;height:1px;background:var(--border)}
+    .picker-divider::before{left:0}.picker-divider::after{right:0}
 
     /* Toast */
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#2D3436;color:white;padding:12px 24px;border-radius:30px;font-size:.88rem;font-weight:500;z-index:200;transition:transform .3s;white-space:nowrap}
@@ -236,7 +244,11 @@
 <div class="picker-overlay" id="pickerOverlay" onclick="handleOverlayClick(event)">
   <div class="picker-sheet">
     <div class="picker-header"><div class="picker-title">換一個景點</div><button class="picker-close" onclick="closePicker()">✕</button></div>
-    <div class="picker-subtitle">選擇你喜歡的替代景點</div>
+    <div class="picker-custom-row">
+      <input type="text" id="customSpotInput" placeholder="自己輸入想去的地方（例：九份老街、員林公園）" />
+      <button class="picker-custom-btn" onclick="confirmCustomSpot()">加入</button>
+    </div>
+    <div class="picker-divider">— 或選擇 AI 推薦 —</div>
     <div class="suggestion-list" id="suggestionList"><div class="picker-loading">AI 正在推薦選項...</div></div>
   </div>
 </div>
@@ -594,15 +606,7 @@
 
   function buildSpotItem(spot,day,slot){
     const item=document.createElement('div'); item.className=`spot-item ${SLOT_META[slot].class}`; item.dataset.name=spot.name
-    // Photo：優先用 photo_url（Google Places），其次用 photo_keyword（Unsplash 懶載入）
-    if(spot.photo_url){
-      const img=document.createElement('img');img.className='spot-photo';img.src=spot.photo_url;img.alt=spot.name;img.onerror=()=>img.remove();item.appendChild(img)
-    } else if(spot.photo_keyword){
-      const img=document.createElement('img');img.className='spot-photo';img.alt=spot.name
-      img.style.background='linear-gradient(135deg,#f0f0f0,#e0e0e0)'
-      item.appendChild(img)
-      loadSpotPhoto(spot.photo_keyword, img)
-    }
+    // 照片暫時關閉（photo_url / photo_keyword 欄位保留供未來使用）
     const top=document.createElement('div'); top.className='spot-top'
     const info=document.createElement('div'); info.className='spot-info'
     // Meta row: type + rating
@@ -694,6 +698,15 @@
     }
     closePicker(); showToast(`✅ 已替換為「${newSpot.name}」`); pickerContext=null
   }
+  function confirmCustomSpot(){
+    const input=document.getElementById('customSpotInput')
+    const name=input.value.trim()
+    if(!name){input.focus();return}
+    const newSpot={type:'景點',name,note:'使用者自訂景點',address:'',maps_url:`https://maps.google.com/?q=${encodeURIComponent(name)}`,lat:0,lng:0,nearby_food:[],activities:[]}
+    confirmSuggestion(newSpot)
+    input.value=''
+  }
+
   function closePicker(){document.getElementById('pickerOverlay').classList.remove('active');if(pickerContext){pickerContext.btnEl.disabled=false;pickerContext.btnEl.textContent='換一個'}}
   function handleOverlayClick(e){if(e.target===document.getElementById('pickerOverlay'))closePicker()}
 
