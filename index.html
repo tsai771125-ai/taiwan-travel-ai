@@ -425,7 +425,8 @@
   function calcDays(){
     const d1=document.getElementById('departDate').value, d2=document.getElementById('returnDate').value
     if(!d1||!d2) return 2
-    return Math.max(1,Math.min(Math.ceil((new Date(d2)-new Date(d1))/(864e5)),7))
+    const diff=Math.round((new Date(d2)-new Date(d1))/(864e5))
+    return Math.max(1,Math.min(diff+1,7))
   }
 
   function updateDayBadge(){
@@ -575,7 +576,8 @@
     document.getElementById('itineraryTitle').textContent=`${dest} ${daysCount} 天之旅`
     document.getElementById('itineraryBadge').textContent=`${daysCount} 天`
     const container=document.getElementById('itineraryContainer'); container.innerHTML=''
-    ;(data.itinerary||[]).forEach(dayData=>container.appendChild(buildDayCard(dayData)))
+    const sorted=[...(data.itinerary||[])].sort((a,b)=>a.day-b.day)
+    sorted.forEach(dayData=>container.appendChild(buildDayCard(dayData)))
   }
 
   const SLOT_META={morning:{label:'早上',emoji:'🌅',class:'morning'},afternoon:{label:'下午',emoji:'☀️',class:'afternoon'},evening:{label:'晚上',emoji:'🌙',class:'evening'}}
