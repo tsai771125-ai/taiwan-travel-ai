@@ -231,7 +231,14 @@
     .clay-result-img{width:100%;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);display:block}
     .clay-cached-badge{display:inline-flex;align-items:center;gap:4px;background:#D5F5E3;color:#27AE60;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:8px}
     .clay-loading{padding:40px 20px;text-align:center;color:var(--text-light);font-size:.9rem}
+    .clay-loading.hidden{display:none}
     .clay-loading-spinner{width:36px;height:36px;border:3px solid #EEE;border-top-color:#6C5CE7;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+    .clay-day-section{margin-top:16px}
+    .clay-day-label{font-size:.82rem;font-weight:700;color:#6C5CE7;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .clay-day-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+    .clay-day-loading{padding:28px;text-align:center;color:var(--text-light);font-size:.85rem;background:#F8F5FF;border-radius:12px}
+    .clay-day-loading.hidden{display:none}
+    .clay-day-spinner{width:28px;height:28px;border:3px solid #EEE;border-top-color:#6C5CE7;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 8px}
 
     @media (max-width:480px) {
       header h1{font-size:1.3rem}
@@ -350,18 +357,10 @@
     <div class="clay-section">
       <div class="clay-section-title">✦ 或換個風格 ✦</div>
       <button class="btn btn-clay" id="clayBtn" onclick="generateClayMap()">
-        🏔️ 生成黏土風格景點地圖
+        🏔️ 生成黏土風格景點地圖（每天一張）
       </button>
-      <div class="clay-hint">DALL-E 3 · 3D 黏土微縮模型風 · 約 20-40 秒</div>
-      <div id="clayLoading" class="clay-loading hidden">
-        <div class="clay-loading-spinner"></div>
-        DALL-E 3 繪製中，請稍候...
-      </div>
-      <div id="clayImgWrap" class="clay-img-wrap hidden">
-        <img id="clayResultImg" class="clay-result-img" alt="黏土風格地圖"/>
-        <div id="clayCachedBadge" class="clay-cached-badge hidden">⚡ 快取圖片</div>
-        <button class="btn btn-secondary" style="margin-top:12px" onclick="downloadClayMap()">⬇️ 下載黏土地圖</button>
-      </div>
+      <div class="clay-hint">gpt-image-1 · 3D 黏土微縮模型風 · 每天約 20-40 秒</div>
+      <div id="clayDayList"></div>
     </div>
 
     <button class="btn btn-secondary" style="margin-top:16px" onclick="showScreen(2)">← 重新修改行程</button>
@@ -848,69 +847,78 @@
   }
 
   // ── Clay Diorama Map ──────────────────────────────────
+  const DAY_ROUTE_COLORS=['#E17055','#0984E3','#00B894','#6C5CE7']
+
   async function generateClayMap(){
     if(!currentItinerary) return
     const btn=document.getElementById('clayBtn')
-    btn.disabled=true; btn.textContent='⏳ 生成中（約 20-40 秒）...'
-    document.getElementById('clayLoading').classList.remove('hidden')
-    document.getElementById('clayImgWrap').classList.add('hidden')
+    btn.disabled=true; btn.textContent='⏳ 生成中...'
 
-    // 收集每天景點（含 lat/lng 供地圖定位）
     const dest=currentParams?.destination||currentItinerary?.title||'台灣'
-    const spots=[] // 用於 cache key
-    const days=currentItinerary.itinerary.map(day=>{
-      const daySpots=[]
+    const itinerary=currentItinerary.itinerary||[]
+    const container=document.getElementById('clayDayList')
+    container.innerHTML=''
+
+    // 建立每天 UI 佔位
+    itinerary.forEach((day,idx)=>{
+      const color=DAY_ROUTE_COLORS[idx%DAY_ROUTE_COLORS.length]
+      const sec=document.createElement('div'); sec.className='clay-day-section'
+      sec.innerHTML=`<div class="clay-day-label"><span class="clay-day-dot" style="background:${color}"></span>第 ${day.day} 天地圖</div>
+        <div id="clayLoad${day.day}" class="clay-day-loading"><div class="clay-day-spinner"></div>繪製中，請稍候...</div>
+        <div id="clayWrap${day.day}" class="clay-img-wrap hidden">
+          <img id="clayImg${day.day}" class="clay-result-img" alt="第${day.day}天黏土地圖"/>
+          <div id="clayCached${day.day}" class="clay-cached-badge hidden">⚡ 快取圖片</div>
+          <button class="btn btn-secondary" style="margin-top:10px;font-size:.85rem;padding:10px 20px" onclick="downloadClayDay(${day.day})">⬇️ 下載第 ${day.day} 天地圖</button>
+        </div>`
+      container.appendChild(sec)
+    })
+
+    // 逐天生成（sequential）
+    let allOk=true
+    for(const day of itinerary){
+      const spots=[]; const daySpots=[]
       ;['morning','afternoon','evening'].forEach(slot=>{
         ;(day[slot]||[]).forEach(sp=>{
           spots.push(sp.name)
           daySpots.push({name:sp.name,lat:sp.lat||0,lng:sp.lng||0,type:sp.type||'景點'})
         })
       })
-      return {day:day.day, area:day.area||'', spots:daySpots}
-    })
-
-    try{
-      const res=await fetch(API.clay,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({destination:dest, spots, days})
-      })
-      if(!res.ok) throw new Error('HTTP '+res.status)
-      const data=await res.json()
-      clayImageUrl=data.image_url
-
-      const img=document.getElementById('clayResultImg')
-      img.src=clayImageUrl
-      img.onload=()=>{
-        document.getElementById('clayLoading').classList.add('hidden')
-        document.getElementById('clayImgWrap').classList.remove('hidden')
-        const badge=document.getElementById('clayCachedBadge')
-        data.cached ? badge.classList.remove('hidden') : badge.classList.add('hidden')
-        showToast(data.cached?'⚡ 使用快取圖片':'✅ 黏土地圖生成完成')
+      try{
+        const res=await fetch(API.clay,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({destination:dest,spots,days:[{day:day.day,area:day.area||'',spots:daySpots}]})})
+        if(!res.ok) throw new Error('HTTP '+res.status)
+        const data=await res.json()
+        const imgEl=document.getElementById('clayImg'+day.day)
+        imgEl.dataset.clayUrl=data.image_url
+        imgEl.src=data.image_url
+        imgEl.onload=()=>{
+          document.getElementById('clayLoad'+day.day).classList.add('hidden')
+          document.getElementById('clayWrap'+day.day).classList.remove('hidden')
+          if(data.cached) document.getElementById('clayCached'+day.day).classList.remove('hidden')
+        }
+        imgEl.onerror=()=>{ document.getElementById('clayLoad'+day.day).textContent='❌ 圖片載入失敗' }
+      }catch(err){
+        console.error(err); allOk=false
+        document.getElementById('clayLoad'+day.day).textContent='❌ 生成失敗，請稍後再試'
       }
-      img.onerror=()=>{ showToast('❌ 圖片載入失敗'); document.getElementById('clayLoading').classList.add('hidden') }
-    }catch(err){
-      console.error(err)
-      document.getElementById('clayLoading').classList.add('hidden')
-      showToast('❌ 黏土地圖生成失敗，請確認 n8n Workflow 5 已匯入並啟用')
-    }finally{
-      btn.disabled=false
-      btn.textContent='🏔️ 重新生成黏土地圖'
     }
+
+    showToast(allOk?'✅ 所有黏土地圖生成完成':'⚠️ 部分地圖生成失敗')
+    btn.disabled=false; btn.textContent='🏔️ 重新生成黏土地圖'
   }
 
-  async function downloadClayMap(){
-    if(!clayImageUrl) return
+  async function downloadClayDay(dayNum){
+    const imgEl=document.getElementById('clayImg'+dayNum)
+    const url=imgEl?.dataset?.clayUrl||imgEl?.src; if(!url) return
     try{
-      const blob=await fetch(clayImageUrl).then(r=>r.blob())
-      const url=URL.createObjectURL(blob)
-      const a=document.createElement('a')
-      a.href=url
-      a.download=(document.getElementById('itineraryTitle').textContent||'台灣旅遊')+'_黏土地圖.png'
-      a.click(); URL.revokeObjectURL(url)
-      showToast('✅ 黏土地圖已下載')
-    }catch{ window.open(clayImageUrl,'_blank') }
+      const blob=await fetch(url).then(r=>r.blob())
+      const objUrl=URL.createObjectURL(blob); const a=document.createElement('a')
+      a.href=objUrl; a.download=`${document.getElementById('itineraryTitle').textContent||'台灣旅遊'}_第${dayNum}天黏土地圖.png`
+      a.click(); URL.revokeObjectURL(objUrl); showToast('✅ 下載完成')
+    }catch{ window.open(url,'_blank') }
   }
+
+  async function downloadClayMap(){ downloadClayDay(1) }
 </script>
 </body>
 </html>
