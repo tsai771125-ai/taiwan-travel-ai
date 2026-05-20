@@ -1,0 +1,136 @@
+{
+  "name": "generate-clay-map",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-clay-map",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "generate-clay-map"
+    },
+    {
+      "parameters": {
+        "jsCode": "/* Check static-data cache; if miss → build DALL-E 3 prompt */\nconst body = $input.first().json.body;\nconst destination = (body.destination || '台灣').replace(/市$|縣$/, '');\nconst spots = (body.spots || []).filter(Boolean).slice(0, 8);\n\n// Build a short cache key from destination + spots\nconst rawKey = destination + '|' + spots.join(',');\nconst cacheKey = 'clay_' + Buffer.from(rawKey).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 28);\n\nconst staticData = $getWorkflowStaticData('global');\nconst cachedUrl = staticData[cacheKey];\nconst cachedTs  = staticData[cacheKey + '_ts'] || 0;\nconst TTL_MS = 45 * 60 * 1000; // 45 minutes (DALL-E URLs expire in ~1h)\n\nif (cachedUrl && (Date.now() - cachedTs) < TTL_MS) {\n  return [{ json: { image_url: cachedUrl, cached: true, cache_key: cacheKey } }];\n}\n\n// Build DALL-E 3 prompt\nconst spotList = spots.length > 0\n  ? spots.slice(0, 6).join(', ')\n  : `${destination} famous tourist spots`;\n\nconst prompt = [\n  '3D clay art style miniature diorama tourist map,',\n  `Taiwan travel destination \"${destination}\",`,\n  `featuring these attractions as adorable hand-crafted clay figurines and miniature buildings: ${spotList}.`,\n  'Isometric bird-eye view, pastel color palette, soft warm lighting,',\n  'ultra-detailed clay and plasticine texture with visible fingerprint marks,',\n  'charming kawaii cartoon aesthetic, kid-friendly render,',\n  'clean white studio background, no text, no labels, no numbers,',\n  'highly detailed miniature scale diorama, vibrant cheerful colors.'\n].join(' ');\n\nreturn [{ json: { image_url: null, cached: false, cache_key: cacheKey, prompt } }];"
+      },
+      "id": "node-cache-check",
+      "name": "Cache Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-cached",
+              "leftValue": "={{ $json.cached }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-cached",
+      "name": "IF Cached",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ image_url: $json.image_url, cached: true }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond-cached",
+      "name": "Respond Cached",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'dall-e-3', prompt: $json.prompt, n: 1, size: '1024x1024', quality: 'standard', response_format: 'url' }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "node-dalle3",
+      "name": "Call DALL-E 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst cacheKey = $('Cache Check').first().json.cache_key;\n\nconst imageUrl = item.data?.[0]?.url;\nif (!imageUrl) throw new Error('DALL-E 3 did not return an image URL. Response: ' + JSON.stringify(item));\n\n// Store in cache (max 15 entries; evict oldest when full)\nconst staticData = $getWorkflowStaticData('global');\nconst keys = Object.keys(staticData).filter(k => k.startsWith('clay_') && !k.endsWith('_ts'));\nif (keys.length >= 15) {\n  let oldest = keys[0], oldestTs = staticData[keys[0] + '_ts'] || 0;\n  keys.forEach(k => { const t = staticData[k + '_ts'] || 0; if (t < oldestTs) { oldest = k; oldestTs = t; } });\n  delete staticData[oldest];\n  delete staticData[oldest + '_ts'];\n}\nstaticData[cacheKey] = imageUrl;\nstaticData[cacheKey + '_ts'] = Date.now();\n\nreturn [{ json: { image_url: imageUrl, cached: false } }];"
+      },
+      "id": "node-parse-store",
+      "name": "Parse & Store Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ image_url: $json.image_url, cached: false }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond-fresh",
+      "name": "Respond Fresh",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 450]
+    }
+  ],
+  "connections": {
+    "Webhook":          { "main": [[{ "node": "Cache Check",       "type": "main", "index": 0 }]] },
+    "Cache Check":      { "main": [[{ "node": "IF Cached",         "type": "main", "index": 0 }]] },
+    "IF Cached":        { "main": [
+                            [{ "node": "Respond Cached",   "type": "main", "index": 0 }],
+                            [{ "node": "Call DALL-E 3",    "type": "main", "index": 0 }]
+                          ]},
+    "Call DALL-E 3":    { "main": [[{ "node": "Parse & Store Cache", "type": "main", "index": 0 }]] },
+    "Parse & Store Cache": { "main": [[{ "node": "Respond Fresh",  "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

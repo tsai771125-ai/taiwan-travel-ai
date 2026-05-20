@@ -219,6 +219,20 @@
       .screen-header h2 { font-size:1rem }
     }
 
+    /* Clay Map */
+    .clay-section{margin-top:24px;padding-top:24px;border-top:2px dashed var(--border)}
+    .clay-section-title{font-size:.82rem;font-weight:700;color:var(--text-light);text-align:center;text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px}
+    .btn-clay{background:linear-gradient(135deg,#A29BFE,#6C5CE7);color:white;width:100%;margin-top:0;border:none;border-radius:12px;padding:14px 28px;font-size:1rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+    .btn-clay:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(108,92,231,.4)}
+    .btn-clay:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+    .clay-hint{font-size:.76rem;color:var(--text-light);text-align:center;margin-top:8px;font-style:italic}
+    .clay-img-wrap{margin-top:16px;position:relative}
+    .clay-img-wrap.hidden{display:none}
+    .clay-result-img{width:100%;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);display:block}
+    .clay-cached-badge{display:inline-flex;align-items:center;gap:4px;background:#D5F5E3;color:#27AE60;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:8px}
+    .clay-loading{padding:40px 20px;text-align:center;color:var(--text-light);font-size:.9rem}
+    .clay-loading-spinner{width:36px;height:36px;border:3px solid #EEE;border-top-color:#6C5CE7;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+
     @media (max-width:480px) {
       header h1{font-size:1.3rem}
       .form-card{padding:20px 16px}
@@ -331,7 +345,26 @@
     </div>
     <img class="result-image" id="resultImage" alt="旅遊行程圖片" />
     <button class="btn btn-primary" id="downloadBtn" onclick="downloadImage()" disabled>⬇️ 下載圖片</button>
-    <button class="btn btn-secondary" onclick="showScreen(2)">← 重新修改行程</button>
+
+    <!-- Clay Diorama Map -->
+    <div class="clay-section">
+      <div class="clay-section-title">✦ 或換個風格 ✦</div>
+      <button class="btn btn-clay" id="clayBtn" onclick="generateClayMap()">
+        🏔️ 生成黏土風格景點地圖
+      </button>
+      <div class="clay-hint">DALL-E 3 · 3D 黏土微縮模型風 · 約 20-40 秒</div>
+      <div id="clayLoading" class="clay-loading hidden">
+        <div class="clay-loading-spinner"></div>
+        DALL-E 3 繪製中，請稍候...
+      </div>
+      <div id="clayImgWrap" class="clay-img-wrap hidden">
+        <img id="clayResultImg" class="clay-result-img" alt="黏土風格地圖"/>
+        <div id="clayCachedBadge" class="clay-cached-badge hidden">⚡ 快取圖片</div>
+        <button class="btn btn-secondary" style="margin-top:12px" onclick="downloadClayMap()">⬇️ 下載黏土地圖</button>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="showScreen(2)">← 重新修改行程</button>
   </div>
 </div>
 
@@ -342,7 +375,8 @@
     generate: N8N_BASE + '/generate-itinerary',
     replace:  N8N_BASE + '/replace-spot',
     image:    N8N_BASE + '/generate-image',
-    extras:   N8N_BASE + '/generate-extras'
+    extras:   N8N_BASE + '/generate-extras',
+    clay:     N8N_BASE + '/generate-clay-map'
   }
 
   const AREA_OPTIONS = {
@@ -391,7 +425,7 @@
     '✨ AI 整理完整行程中...','🎉 快完成了，請稍候！'
   ]
 
-  let currentItinerary=null, currentParams=null, imageUrl=null
+  let currentItinerary=null, currentParams=null, imageUrl=null, clayImageUrl=null
   let pickerContext=null, leafletMap=null, mapOpen=true, loadingInterval=null
 
   // ── Init ──
@@ -811,6 +845,66 @@
       else{const blob=await fetch(imageUrl).then(r=>r.blob());const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=document.getElementById('itineraryTitle').textContent+'.png';a.click();URL.revokeObjectURL(url)}
       showToast('✅ 圖片已下載')
     }catch{window.open(imageUrl,'_blank')}
+  }
+
+  // ── Clay Diorama Map ──────────────────────────────────
+  async function generateClayMap(){
+    if(!currentItinerary) return
+    const btn=document.getElementById('clayBtn')
+    btn.disabled=true; btn.textContent='⏳ 生成中（約 20-40 秒）...'
+    document.getElementById('clayLoading').classList.remove('hidden')
+    document.getElementById('clayImgWrap').classList.add('hidden')
+
+    // 收集景點名稱（只取景點類，最多 8 個）
+    const spots=[]
+    currentItinerary.itinerary.forEach(d=>{
+      ;['morning','afternoon','evening'].forEach(s=>{
+        ;(d[s]||[]).forEach(sp=>{ if(spots.length<8) spots.push(sp.name) })
+      })
+    })
+    const dest=currentParams?.destination||currentItinerary?.title||'台灣'
+
+    try{
+      const res=await fetch(API.clay,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({destination:dest, spots})
+      })
+      if(!res.ok) throw new Error('HTTP '+res.status)
+      const data=await res.json()
+      clayImageUrl=data.image_url
+
+      const img=document.getElementById('clayResultImg')
+      img.src=clayImageUrl
+      img.onload=()=>{
+        document.getElementById('clayLoading').classList.add('hidden')
+        document.getElementById('clayImgWrap').classList.remove('hidden')
+        const badge=document.getElementById('clayCachedBadge')
+        data.cached ? badge.classList.remove('hidden') : badge.classList.add('hidden')
+        showToast(data.cached?'⚡ 使用快取圖片':'✅ 黏土地圖生成完成')
+      }
+      img.onerror=()=>{ showToast('❌ 圖片載入失敗'); document.getElementById('clayLoading').classList.add('hidden') }
+    }catch(err){
+      console.error(err)
+      document.getElementById('clayLoading').classList.add('hidden')
+      showToast('❌ 黏土地圖生成失敗，請確認 n8n Workflow 5 已匯入並啟用')
+    }finally{
+      btn.disabled=false
+      btn.textContent='🏔️ 重新生成黏土地圖'
+    }
+  }
+
+  async function downloadClayMap(){
+    if(!clayImageUrl) return
+    try{
+      const blob=await fetch(clayImageUrl).then(r=>r.blob())
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a')
+      a.href=url
+      a.download=(document.getElementById('itineraryTitle').textContent||'台灣旅遊')+'_黏土地圖.png'
+      a.click(); URL.revokeObjectURL(url)
+      showToast('✅ 黏土地圖已下載')
+    }catch{ window.open(clayImageUrl,'_blank') }
   }
 </script>
 </body>
