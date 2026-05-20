@@ -855,20 +855,25 @@
     document.getElementById('clayLoading').classList.remove('hidden')
     document.getElementById('clayImgWrap').classList.add('hidden')
 
-    // 收集景點名稱（只取景點類，最多 8 個）
-    const spots=[]
-    currentItinerary.itinerary.forEach(d=>{
-      ;['morning','afternoon','evening'].forEach(s=>{
-        ;(d[s]||[]).forEach(sp=>{ if(spots.length<8) spots.push(sp.name) })
-      })
-    })
+    // 收集每天景點（含 lat/lng 供地圖定位）
     const dest=currentParams?.destination||currentItinerary?.title||'台灣'
+    const spots=[] // 用於 cache key
+    const days=currentItinerary.itinerary.map(day=>{
+      const daySpots=[]
+      ;['morning','afternoon','evening'].forEach(slot=>{
+        ;(day[slot]||[]).forEach(sp=>{
+          spots.push(sp.name)
+          daySpots.push({name:sp.name,lat:sp.lat||0,lng:sp.lng||0,type:sp.type||'景點'})
+        })
+      })
+      return {day:day.day, area:day.area||'', spots:daySpots}
+    })
 
     try{
       const res=await fetch(API.clay,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({destination:dest, spots})
+        body:JSON.stringify({destination:dest, spots, days})
       })
       if(!res.ok) throw new Error('HTTP '+res.status)
       const data=await res.json()
