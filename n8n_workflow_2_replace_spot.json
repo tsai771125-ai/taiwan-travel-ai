@@ -1,0 +1,85 @@
+{
+  "name": "replace-spot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "replace-spot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "replace-spot"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst keepList = (body.keep_spots || []).join('、');\nconst regionNote = body.region ? `，優先推薦 ${body.region} 附近的地點` : '';\nconst slotLabel = body.slot === 'morning' ? '早上' : body.slot === 'afternoon' ? '下午' : '晚上';\n\nconst systemPrompt = `你是台灣旅遊規劃專家。使用者想替換行程中的一個景點或美食，請推薦 3 個不同的替代選項讓使用者選擇。\n\n重要規則：\n1. 只回傳純 JSON，不可加入任何說明文字或 markdown 語法\n2. 必須推薦 3 個選項\n3. 不可推薦已在行程中的地點\n4. type 只能填「景點」或「美食」兩種\n5. note 是一句20字以內的中文簡短介紹\n6. 推薦的地點要真實存在於該城市\n7. 三個選項要有多樣性（例如：景點+美食，或不同風格的景點）\n\n必須嚴格遵守以下輸出格式：\n{\"suggestions\":[{\"type\":\"景點\",\"name\":\"xxx\",\"note\":\"xxx\"},{\"type\":\"美食\",\"name\":\"xxx\",\"note\":\"xxx\"},{\"type\":\"景點\",\"name\":\"xxx\",\"note\":\"xxx\"}]}`;\n\nconst userMessage = `目的地：${body.destination}${regionNote}\n時段：第 ${body.day} 天${slotLabel}\n要替換的地點：${body.replace_spot}\n旅遊傾向：${body.preference}\n行程中已有的地點（不可重複推薦）：${keepList}\n\n請推薦 3 個適合的替代選項。`;\n\nreturn [{\n  json: {\n    model: 'gpt-4o-mini',\n    response_format: { type: 'json_object' },\n    temperature: 1.0,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userMessage }\n    ]\n  }\n}];"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "node-openai",
+      "name": "Call OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.choices[0].message.content;\nconst result = JSON.parse(raw);\nreturn [{ json: result }];"
+      },
+      "id": "node-parse",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{"node": "Build Prompt", "type": "main", "index": 0}]] },
+    "Build Prompt": { "main": [[{"node": "Call OpenAI", "type": "main", "index": 0}]] },
+    "Call OpenAI": { "main": [[{"node": "Parse Response", "type": "main", "index": 0}]] },
+    "Parse Response": { "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

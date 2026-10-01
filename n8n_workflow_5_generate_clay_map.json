@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/* Check static-data cache; if miss → build DALL-E 3 prompt */\nconst body = $input.first().json.body;\nconst destination = (body.destination || '台灣').replace(/市$|縣$/, '');\nconst spots = (body.spots || []).filter(Boolean).slice(0, 8);\n\n// Build a short cache key from destination + spots\nconst rawKey = destination + '|' + spots.join(',');\nconst cacheKey = 'clay_' + Buffer.from(rawKey).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 28);\n\nconst staticData = $getWorkflowStaticData('global');\nconst cachedUrl = staticData[cacheKey];\nconst cachedTs  = staticData[cacheKey + '_ts'] || 0;\nconst TTL_MS = 45 * 60 * 1000; // 45 minutes (DALL-E URLs expire in ~1h)\n\nif (cachedUrl && (Date.now() - cachedTs) < TTL_MS) {\n  return [{ json: { image_url: cachedUrl, cached: true, cache_key: cacheKey } }];\n}\n\n// Build DALL-E 3 prompt\nconst spotList = spots.length > 0\n  ? spots.slice(0, 6).join(', ')\n  : `${destination} famous tourist spots`;\n\nconst prompt = [\n  '3D clay art style miniature diorama tourist map,',\n  `Taiwan travel destination \"${destination}\",`,\n  `featuring these attractions as adorable hand-crafted clay figurines and miniature buildings: ${spotList}.`,\n  'Isometric bird-eye view, pastel color palette, soft warm lighting,',\n  'ultra-detailed clay and plasticine texture with visible fingerprint marks,',\n  'charming kawaii cartoon aesthetic, kid-friendly render,',\n  'clean white studio background, no text, no labels, no numbers,',\n  'highly detailed miniature scale diorama, vibrant cheerful colors.'\n].join(' ');\n\nreturn [{ json: { image_url: null, cached: false, cache_key: cacheKey, prompt } }];"
+        "jsCode": "/* Check cache; if miss → build geographic clay map prompt */\nconst body = $input.first().json.body;\nconst destination = (body.destination || '台灣').replace(/市$|縣$/, '');\nconst spots = (body.spots || []).filter(Boolean).slice(0, 12);\nconst days = body.days || [];\n\n// Cache key\nconst rawKey = destination + '|' + spots.join(',');\nconst cacheKey = 'clay_' + Buffer.from(rawKey).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 28);\n\nconst staticData = $getWorkflowStaticData('global');\nconst cachedUrl = staticData[cacheKey];\nconst cachedTs  = staticData[cacheKey + '_ts'] || 0;\nif (cachedUrl && (Date.now() - cachedTs) < 45 * 60 * 1000) {\n  return [{ json: { image_url: cachedUrl, cached: true, cache_key: cacheKey } }];\n}\n\n// Calculate relative geographic positions from lat/lng\nconst allSpots = days.flatMap(d => d.spots || []).filter(s => s.lat && s.lng && s.lat > 20 && s.lng > 118);\nlet geoHint = '';\nif (allSpots.length >= 2) {\n  const lats = allSpots.map(s => s.lat);\n  const lngs = allSpots.map(s => s.lng);\n  const minLat = Math.min(...lats), maxLat = Math.max(...lats);\n  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);\n  const latR = maxLat - minLat || 0.01, lngR = maxLng - minLng || 0.01;\n  const pos = allSpots.map(s => {\n    const v = (s.lat - minLat) / latR;\n    const h = (s.lng - minLng) / lngR;\n    const vp = v > 0.65 ? 'top' : v > 0.35 ? 'middle' : 'bottom';\n    const hp = h > 0.65 ? 'right' : h > 0.35 ? 'center' : 'left';\n    return `${s.name} placed at map ${vp}-${hp}`;\n  });\n  geoHint = 'Accurate geographic placement: ' + pos.join('; ') + '. ';\n}\n\n// Day route descriptions\nconst DAY_COLORS = ['orange', 'blue', 'green', 'purple'];\nlet routeDesc = '';\nif (days.length > 0) {\n  routeDesc = days.map(d => {\n    const color = DAY_COLORS[(d.day - 1) % DAY_COLORS.length];\n    const names = (d.spots || []).map(s => s.name).join(', ');\n    return `Day ${d.day} (${color} road): ${names}`;\n  }).join(' | ');\n} else {\n  routeDesc = spots.slice(0, 8).join(', ');\n}\n\nconst prompt = [\n  `3D clay art miniature diorama TOURIST MAP of ${destination}, Taiwan.`,\n  'Bird-eye isometric view. Green clay grass terrain base with hills.',\n  'Brown clay winding roads and dotted paths connecting all attractions.',\n  `Attractions placed as 3D clay miniature buildings and landmarks: ${routeDesc}.`,\n  geoHint,\n  'Color-coded travel routes: Day 1 = orange dotted path with small orange flags, Day 2 = blue dotted path with blue flags.',\n  'Each attraction has a small brown wooden signpost with its name in Chinese characters.',\n  'Decorative compass rose in bottom-left corner.',\n  `Cute clay title banner at top reading \"${destination}旅遊地圖\".`,\n  'Style: ultra-detailed clay and plasticine texture, fingerprint marks visible, pastel warm colors,',\n  'soft studio lighting, kawaii cartoon aesthetic, kid-friendly, highly detailed miniature diorama scale,',\n  'similar to Taiwan Tourism Bureau clay map style.'\n].filter(Boolean).join(' ');\n\nreturn [{ json: { image_url: null, cached: false, cache_key: cacheKey, prompt } }];"
       },
       "id": "node-cache-check",
       "name": "Cache Check",
@@ -69,19 +69,12 @@
       "parameters": {
         "method": "POST",
         "url": "https://api.openai.com/v1/images/generations",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
-            }
-          ]
-        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ model: 'dall-e-3', prompt: $json.prompt, n: 1, size: '1024x1024', quality: 'standard', response_format: 'url' }) }}",
+        "body": "={{ JSON.stringify({ model: 'gpt-image-1', prompt: $json.prompt, n: 1, size: '1024x1024', quality: 'high' }) }}",
         "options": { "timeout": 120000 }
       },
       "id": "node-dalle3",
@@ -92,7 +85,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst cacheKey = $('Cache Check').first().json.cache_key;\n\nconst imageUrl = item.data?.[0]?.url;\nif (!imageUrl) throw new Error('DALL-E 3 did not return an image URL. Response: ' + JSON.stringify(item));\n\n// Store in cache (max 15 entries; evict oldest when full)\nconst staticData = $getWorkflowStaticData('global');\nconst keys = Object.keys(staticData).filter(k => k.startsWith('clay_') && !k.endsWith('_ts'));\nif (keys.length >= 15) {\n  let oldest = keys[0], oldestTs = staticData[keys[0] + '_ts'] || 0;\n  keys.forEach(k => { const t = staticData[k + '_ts'] || 0; if (t < oldestTs) { oldest = k; oldestTs = t; } });\n  delete staticData[oldest];\n  delete staticData[oldest + '_ts'];\n}\nstaticData[cacheKey] = imageUrl;\nstaticData[cacheKey + '_ts'] = Date.now();\n\nreturn [{ json: { image_url: imageUrl, cached: false } }];"
+        "jsCode": "const item = $input.first().json;\nconst cacheKey = $('Cache Check').first().json.cache_key;\n\nconst d = item.data?.[0];\nlet imageUrl = d?.url || null;\nif (!imageUrl && d?.b64_json) {\n  imageUrl = 'data:image/png;base64,' + d.b64_json;\n}\nif (!imageUrl) throw new Error('No image returned. Response: ' + JSON.stringify(item));\n\nconst staticData = $getWorkflowStaticData('global');\nconst keys = Object.keys(staticData).filter(k => k.startsWith('clay_') && !k.endsWith('_ts'));\nif (keys.length >= 15) {\n  let oldest = keys[0], oldestTs = staticData[keys[0] + '_ts'] || 0;\n  keys.forEach(k => { const t = staticData[k + '_ts'] || 0; if (t < oldestTs) { oldest = k; oldestTs = t; } });\n  delete staticData[oldest];\n  delete staticData[oldest + '_ts'];\n}\nif (d?.url) {\n  staticData[cacheKey] = imageUrl;\n  staticData[cacheKey + '_ts'] = Date.now();\n}\n\nreturn [{ json: { image_url: imageUrl, cached: false } }];"
       },
       "id": "node-parse-store",
       "name": "Parse & Store Cache",
@@ -121,14 +114,14 @@
     }
   ],
   "connections": {
-    "Webhook":          { "main": [[{ "node": "Cache Check",       "type": "main", "index": 0 }]] },
-    "Cache Check":      { "main": [[{ "node": "IF Cached",         "type": "main", "index": 0 }]] },
-    "IF Cached":        { "main": [
-                            [{ "node": "Respond Cached",   "type": "main", "index": 0 }],
-                            [{ "node": "Call DALL-E 3",    "type": "main", "index": 0 }]
-                          ]},
-    "Call DALL-E 3":    { "main": [[{ "node": "Parse & Store Cache", "type": "main", "index": 0 }]] },
-    "Parse & Store Cache": { "main": [[{ "node": "Respond Fresh",  "type": "main", "index": 0 }]] }
+    "Webhook":             { "main": [[{ "node": "Cache Check",        "type": "main", "index": 0 }]] },
+    "Cache Check":         { "main": [[{ "node": "IF Cached",          "type": "main", "index": 0 }]] },
+    "IF Cached":           { "main": [
+                               [{ "node": "Respond Cached",    "type": "main", "index": 0 }],
+                               [{ "node": "Call DALL-E 3",     "type": "main", "index": 0 }]
+                             ]},
+    "Call DALL-E 3":       { "main": [[{ "node": "Parse & Store Cache","type": "main", "index": 0 }]] },
+    "Parse & Store Cache": { "main": [[{ "node": "Respond Fresh",      "type": "main", "index": 0 }]] }
   },
   "active": false,
   "settings": { "executionOrder": "v1" },

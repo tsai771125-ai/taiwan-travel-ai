@@ -1,0 +1,85 @@
+{
+  "name": "generate-image",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-image",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "generate-image"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst title = body.title || '台灣旅遊';\nconst itinerary = body.itinerary || [];\n\n// Build structured description\nconst dayDescriptions = itinerary.map(day => {\n  const morning   = (day.morning   || []).join('、') || '–';\n  const afternoon = (day.afternoon || []).join('、') || '–';\n  const evening   = (day.evening   || []).join('、') || '–';\n  return `Day ${day.day}: morning(${morning}), afternoon(${afternoon}), evening(${evening})`;\n}).join(' | ');\n\n// Collect all spots for visual reference\nconst allSpots = itinerary.flatMap(day => [\n  ...(day.morning || []),\n  ...(day.afternoon || []),\n  ...(day.evening || [])\n]).slice(0, 8).join(', ');\n\nconst totalDays = itinerary.length;\n\nconst prompt = `A cute kawaii-style travel itinerary illustration card for \"${title}\". Layout: ${totalDays} vertical day columns side by side, each column divided into 3 rows (morning 早上 / afternoon 下午 / evening 晚上) with a small row label. Each cell contains a tiny kawaii illustration of the location. Places: ${dayDescriptions}. Overall featured spots: ${allSpots}. Style: pastel pink and mint color scheme, Japanese travel poster aesthetic, soft watercolor texture, clean white background, Chinese day labels (第一天, 第二天...) as column headers, time labels in small Chinese text, no large text blocks, highly detailed kawaii icons, charming and cheerful mood.`;\n\nreturn [{\n  json: {\n    model: 'gpt-image-1',\n    prompt: prompt,\n    n: 1,\n    size: '1024x1024'\n  }\n}];"
+      },
+      "id": "node-build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "node-openai",
+      "name": "Call OpenAI Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst data = item.data;\nif (data && data.length > 0 && data[0].b64_json) {\n  const imageUrl = `data:image/png;base64,${data[0].b64_json}`;\n  return [{ json: { image_url: imageUrl } }];\n}\nif (data && data.length > 0 && data[0].url) {\n  return [{ json: { image_url: data[0].url } }];\n}\nthrow new Error('No image data returned');"
+      },
+      "id": "node-parse",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "node-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{"node": "Build Prompt", "type": "main", "index": 0}]] },
+    "Build Prompt": { "main": [[{"node": "Call OpenAI Image", "type": "main", "index": 0}]] },
+    "Call OpenAI Image": { "main": [[{"node": "Parse Response", "type": "main", "index": 0}]] },
+    "Parse Response": { "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}
